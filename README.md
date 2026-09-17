@@ -52,10 +52,16 @@ La aplicación centraliza oportunidades, genera material personalizado —correo
 
 | Capa | Tecnología |
 | --- | --- |
+<<<<<<< HEAD
 | Frontend | Angular 21, Angular Material y SCSS |
 | Gráficos | Chart.js y ng2-charts |
 | Backend | Node.js y Express |
 | Inteligencia artificial | OpenAI API con búsqueda web |
+=======
+| Frontend | Angular 21, Angular Material, SCSS |
+| Graficos | Chart.js, ng2-charts |
+| Backend | Node.js, Express |
+>>>>>>> 13f32898a933480a330d84ca10b09707938adb9e
 | Persistencia | Archivo JSON local |
 
 ## Requisitos
