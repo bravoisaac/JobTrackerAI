@@ -11,6 +11,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { RouterLink } from '@angular/router';
 
 import { JobsStore } from '../jobs/jobs.store';
+import type { ApplicationPlatformId } from '../jobs/types';
 import { AppSettings, SettingsStore } from './settings.store';
 
 @Component({
@@ -24,10 +25,10 @@ import { AppSettings, SettingsStore } from './settings.store';
     MatIconModule,
     MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
   ],
   templateUrl: './settings.page.html',
-  styleUrl: './settings.page.scss'
+  styleUrl: './settings.page.scss',
 })
 export class SettingsPageComponent {
   private readonly fb = inject(FormBuilder);
@@ -39,7 +40,11 @@ export class SettingsPageComponent {
     hideAppliedByDefault: this.settingsStore.snapshot().hideAppliedByDefault,
     minScoreDefault: this.settingsStore.snapshot().minScoreDefault,
     preferredTechnology: this.settingsStore.snapshot().preferredTechnology,
-    preferredLocation: this.settingsStore.snapshot().preferredLocation
+    preferredLocation: this.settingsStore.snapshot().preferredLocation,
+    applicationPlatforms: this.fb.nonNullable.control<ApplicationPlatformId[]>(
+      this.settingsStore.snapshot().applicationPlatforms,
+    ),
+    applicationMinScore: this.settingsStore.snapshot().applicationMinScore,
   });
 
   save() {

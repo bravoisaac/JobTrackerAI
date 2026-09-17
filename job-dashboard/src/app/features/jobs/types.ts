@@ -14,6 +14,27 @@ export interface Job {
   tecnologias?: string[];
   ia_razones?: string[];
   aplicado_at?: string;
+  application_status?: 'ready_for_review' | 'submitted';
+  application_platform?: ApplicationPlatformId;
+  application_mode?: 'assisted';
+  application_prepared_at?: string;
+  application_next_action?: string;
+}
+
+export type ApplicationPlatformId = 'linkedin' | 'computrabajo' | 'external';
+
+export interface PrepareApplicationsRequest {
+  platforms: ApplicationPlatformId[];
+  min_score: number;
+  limit?: number;
+  profile: CandidateProfile;
+}
+
+export interface PrepareApplicationsResponse {
+  prepared: Job[];
+  total: number;
+  mode: 'assisted';
+  message: string;
 }
 
 export interface Application {
@@ -57,4 +78,10 @@ export interface DiscoveredJob {
 
 export interface DiscoverJobsResponse {
   jobs: DiscoveredJob[];
+}
+
+export function applicationPlatformLabel(platform?: ApplicationPlatformId) {
+  if (platform === 'linkedin') return 'LinkedIn';
+  if (platform === 'computrabajo') return 'Computrabajo';
+  return 'Otro portal';
 }

@@ -9,8 +9,22 @@
     </div>
 
     <div class="header__actions">
+      <button
+        mat-flat-button
+        (click)="prepareSelectedApplications()"
+        [disabled]="vm.loading || preparing()"
+      >
+        @if (preparing()) {
+          <mat-spinner diameter="18" />
+        } @else {
+          <mat-icon>auto_mode</mat-icon>
+        }
+        Preparar seleccionadas
+      </button>
       <button mat-stroked-button (click)="toggleHideApplied()" [disabled]="vm.loading">
-        <mat-icon>{{ jobsStore.hideAppliedControl.value ? 'visibility' : 'visibility_off' }}</mat-icon>
+        <mat-icon>{{
+          jobsStore.hideAppliedControl.value ? 'visibility' : 'visibility_off'
+        }}</mat-icon>
         {{ jobsStore.hideAppliedControl.value ? 'Mostrar postulados' : 'Ocultar postulados' }}
       </button>
       <button mat-flat-button (click)="discoverWithAi()" [disabled]="vm.loading">
@@ -43,12 +57,21 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Ubicacion</mat-label>
-        <input matInput [formControl]="jobsStore.locationControl" placeholder="Ej: Remoto, Santiago" />
+        <input
+          matInput
+          [formControl]="jobsStore.locationControl"
+          placeholder="Ej: Remoto, Santiago"
+        />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Score minimo</mat-label>
-        <input matInput type="number" [formControl]="jobsStore.minScoreControl" placeholder="0-100" />
+        <input
+          matInput
+          type="number"
+          [formControl]="jobsStore.minScoreControl"
+          placeholder="0-100"
+        />
       </mat-form-field>
     </div>
   </mat-card>
@@ -86,6 +109,10 @@
               <mat-chip [ngClass]="job.aplicado ? 'chip--applied' : 'chip--open'">
                 {{ job.aplicado ? 'Postulado' : 'No aplicado' }}
               </mat-chip>
+              @if (job.application_status === 'ready_for_review') {
+                <mat-chip>Lista para revisar</mat-chip>
+              }
+              <mat-chip>{{ platformLabel(job.application_platform) }}</mat-chip>
             </mat-chip-set>
           </div>
 
@@ -106,8 +133,13 @@
 
           <div class="actions">
             <a mat-button [routerLink]="['/jobs', job.id]">Ver detalle</a>
-            <button mat-flat-button color="primary" (click)="apply(job.id)" [disabled]="job.aplicado">
-              Postular
+            <button
+              mat-flat-button
+              color="primary"
+              [routerLink]="['/jobs', job.id, 'generate']"
+              [disabled]="job.aplicado"
+            >
+              {{ job.application_status === 'ready_for_review' ? 'Revisar y enviar' : 'Preparar' }}
             </button>
           </div>
         </mat-card>

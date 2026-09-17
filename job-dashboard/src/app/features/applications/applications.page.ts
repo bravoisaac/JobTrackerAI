@@ -9,7 +9,7 @@ import { RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 
 import { JobsStore } from '../jobs/jobs.store';
-import { Job } from '../jobs/types';
+import { applicationPlatformLabel, Job } from '../jobs/types';
 
 @Component({
   selector: 'app-applications-page',
@@ -22,34 +22,40 @@ import { Job } from '../jobs/types';
     MatCardModule,
     MatChipsModule,
     MatIconModule,
-    MatProgressBarModule
+    MatProgressBarModule,
   ],
   templateUrl: './applications.page.html',
-  styleUrl: './applications.page.scss'
+  styleUrl: './applications.page.scss',
 })
 export class ApplicationsPageComponent {
   readonly jobsStore = inject(JobsStore);
+  readonly platformLabel = applicationPlatformLabel;
 
   readonly vm$ = this.jobsStore.jobs$.pipe(
     map((jobs) => {
-      const appliedJobs = jobs
-        .filter((job) => job.aplicado)
-        .sort((a, b) => dateValue(b.aplicado_at) - dateValue(a.aplicado_at));
+      const trackedJobs = jobs
+        .filter((job) => job.aplicado || job.application_status === 'ready_for_review')
+        .sort(
+          (a, b) =>
+            dateValue(b.aplicado_at ?? b.application_prepared_at) -
+            dateValue(a.aplicado_at ?? a.application_prepared_at),
+        );
 
-      const averageScore = appliedJobs.length
+      const averageScore = trackedJobs.length
         ? Math.round(
-            appliedJobs.reduce((total, job) => total + (job.match_score ?? 0), 0) /
-              appliedJobs.length
+            trackedJobs.reduce((total, job) => total + (job.match_score ?? 0), 0) /
+              trackedJobs.length,
           )
         : 0;
 
       return {
-        appliedJobs,
-        totalApplications: appliedJobs.length,
+        trackedJobs,
+        submittedCount: trackedJobs.filter((job) => job.aplicado).length,
+        readyCount: trackedJobs.filter((job) => !job.aplicado).length,
         averageScore,
-        lastApplicationDate: appliedJobs[0]?.aplicado_at ?? ''
+        lastApplicationDate: trackedJobs.find((job) => job.aplicado)?.aplicado_at ?? '',
       };
-    })
+    }),
   );
 
   constructor() {

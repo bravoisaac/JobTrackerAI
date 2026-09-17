@@ -37,13 +37,53 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Ubicación preferida</mat-label>
-        <input matInput formControlName="preferredLocation" placeholder="Remoto, Chile, Santiago..." />
+        <input
+          matInput
+          formControlName="preferredLocation"
+          placeholder="Remoto, Chile, Santiago..."
+        />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Score mínimo por defecto</mat-label>
         <input matInput type="number" min="0" max="100" formControlName="minScoreDefault" />
       </mat-form-field>
+    </div>
+  </mat-card>
+
+  <mat-card class="panel panel--wide">
+    <div class="panel__head">
+      <mat-icon>auto_mode</mat-icon>
+      <div>
+        <h2>Postulación asistida</h2>
+        <p>Elige qué portales entran en la preparación automática de tu cola.</p>
+      </div>
+    </div>
+
+    <div class="fields two">
+      <mat-form-field appearance="outline">
+        <mat-label>Plataformas elegidas</mat-label>
+        <mat-select formControlName="applicationPlatforms" multiple>
+          <mat-option value="linkedin">LinkedIn</mat-option>
+          <mat-option value="computrabajo">Computrabajo</mat-option>
+          <mat-option value="external">Otros portales</mat-option>
+        </mat-select>
+        <mat-hint>Puedes elegir una o varias.</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Match mínimo para preparar</mat-label>
+        <input matInput type="number" min="0" max="100" formControlName="applicationMinScore" />
+        <mat-hint>Solo prepara ofertas con este score o superior.</mat-hint>
+      </mat-form-field>
+    </div>
+
+    <div class="safety-note">
+      <mat-icon>verified_user</mat-icon>
+      <span>
+        La app prepara y organiza la postulación. El envío final se confirma dentro del portal para
+        respetar sus reglas, CAPTCHA y preguntas particulares.
+      </span>
     </div>
   </mat-card>
 

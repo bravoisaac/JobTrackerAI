@@ -1,5 +1,5 @@
 import { AsyncPipe, NgClass } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -16,6 +16,9 @@ import { RouterLink } from '@angular/router';
 
 import { JobsStore } from '../jobs.store';
 import { DiscoverJobsDialogComponent } from '../components/discover-jobs.dialog';
+import { ProfileStore } from '../../profile/profile.store';
+import { SettingsStore } from '../../settings/settings.store';
+import { applicationPlatformLabel } from '../types';
 
 @Component({
   selector: 'app-jobs-list-page',
@@ -33,25 +36,23 @@ import { DiscoverJobsDialogComponent } from '../components/discover-jobs.dialog'
     MatDialogModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule
+    MatSelectModule,
   ],
   templateUrl: './jobs-list.page.html',
-  styleUrl: './jobs-list.page.scss'
+  styleUrl: './jobs-list.page.scss',
 })
 export class JobsListPageComponent {
   readonly jobsStore = inject(JobsStore);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
+  private readonly profileStore = inject(ProfileStore);
+  private readonly settingsStore = inject(SettingsStore);
 
   readonly vm$ = this.jobsStore.vm$;
   readonly skeleton = Array.from({ length: 6 }, (_, i) => i);
+  readonly preparing = signal(false);
+  readonly platformLabel = applicationPlatformLabel;
   constructor() {}
-
-  apply(jobId: number) {
-    this.jobsStore.applyToJob(jobId).subscribe({
-      next: () => this.snackBar.open('Postulación marcada como enviada', 'Cerrar', { duration: 2500 })
-    });
-  }
 
   toggleHideApplied() {
     const next = !this.jobsStore.hideAppliedControl.value;
@@ -63,10 +64,45 @@ export class JobsListPageComponent {
       autoFocus: false,
       width: 'min(980px, 96vw)',
       maxWidth: '96vw',
-      maxHeight: '90vh'
+      maxHeight: '90vh',
     });
     ref.afterClosed().subscribe((result) => {
       if (result?.imported) this.jobsStore.loadJobs();
     });
+  }
+
+  prepareSelectedApplications() {
+    if (!this.profileStore.hasPersonalData()) {
+      this.snackBar.open(
+        'Completa nombre y email en tu perfil antes de preparar postulaciones.',
+        'Cerrar',
+        {
+          duration: 4000,
+        },
+      );
+      return;
+    }
+
+    const settings = this.settingsStore.snapshot();
+    this.preparing.set(true);
+    this.jobsStore
+      .prepareApplications({
+        platforms: settings.applicationPlatforms,
+        min_score: settings.applicationMinScore,
+        limit: 10,
+        profile: this.profileStore.snapshot(),
+      })
+      .subscribe({
+        next: (response) => {
+          this.preparing.set(false);
+          this.snackBar.open(response.message, 'Cerrar', { duration: 4500 });
+        },
+        error: (error) => {
+          this.preparing.set(false);
+          this.snackBar.open(error?.message ?? 'No se pudo preparar la cola.', 'Cerrar', {
+            duration: 4500,
+          });
+        },
+      });
   }
 }

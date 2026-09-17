@@ -63,11 +63,18 @@
     </mat-card>
 
     <mat-card class="panel actions">
+      <button mat-flat-button color="primary" (click)="openApplicationPortal()">
+        <mat-icon>open_in_new</mat-icon>
+        Abrir portal y completar envío
+      </button>
       <button mat-flat-button color="primary" (click)="markApplied()">
         <mat-icon>check_circle</mat-icon>
-        Marcar como aplicado
+        Ya envié la postulación
       </button>
-      <div class="hint">Copia el texto, envialo y marca el trabajo como aplicado.</div>
+      <div class="hint">
+        Revisa los textos, abre LinkedIn, Computrabajo u otro portal y confirma el envío. La app no
+        guarda tu contraseña ni intenta resolver CAPTCHA.
+      </div>
     </mat-card>
   </div>
 } @else {

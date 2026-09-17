@@ -3,7 +3,7 @@
     <div>
       <div class="eyebrow">Pipeline personal</div>
       <h1>Postulaciones</h1>
-      <p>Seguimiento de los trabajos que ya marcaste como postulados.</p>
+      <p>Revisa la cola preparada y confirma las postulaciones que ya enviaste.</p>
     </div>
 
     <a mat-flat-button routerLink="/jobs">
@@ -15,28 +15,26 @@
   <section class="metrics">
     <mat-card class="metric">
       <mat-icon>send</mat-icon>
-      <span>Total postulaciones</span>
-      <strong>{{ vm.totalApplications }}</strong>
+      <span>Listas para revisar</span>
+      <strong>{{ vm.readyCount }}</strong>
     </mat-card>
 
     <mat-card class="metric">
       <mat-icon>auto_awesome</mat-icon>
-      <span>Match promedio</span>
-      <strong>{{ vm.averageScore }}%</strong>
+      <span>Postulaciones enviadas</span>
+      <strong>{{ vm.submittedCount }}</strong>
     </mat-card>
 
     <mat-card class="metric">
       <mat-icon>event_available</mat-icon>
-      <span>Ultima postulacion</span>
-      <strong>
-        {{ vm.lastApplicationDate ? (vm.lastApplicationDate | date: 'dd/MM') : '—' }}
-      </strong>
+      <span>Match promedio</span>
+      <strong>{{ vm.averageScore }}%</strong>
     </mat-card>
   </section>
 
-  @if (vm.appliedJobs.length) {
+  @if (vm.trackedJobs.length) {
     <section class="applications">
-      @for (job of vm.appliedJobs; track job.id) {
+      @for (job of vm.trackedJobs; track job.id) {
         <mat-card class="application-card">
           <div class="application-card__main">
             <div class="application-card__top">
@@ -46,7 +44,9 @@
               </div>
 
               <mat-chip-set>
-                <mat-chip class="chip--applied">Postulado</mat-chip>
+                <mat-chip [class.chip--applied]="job.aplicado" [class.chip--ready]="!job.aplicado">
+                  {{ job.aplicado ? 'Enviada' : 'Lista para revisar' }}
+                </mat-chip>
               </mat-chip-set>
             </div>
 
@@ -75,16 +75,20 @@
 
           <div class="application-card__side">
             <div class="date">
-              <span>Fecha</span>
+              <span>{{ platformLabel(job.application_platform) }}</span>
               <strong>
-                {{ job.aplicado_at ? (job.aplicado_at | date: 'dd/MM/yyyy') : 'Sin fecha' }}
+                {{
+                  job.aplicado_at || job.application_prepared_at
+                    ? (job.aplicado_at || job.application_prepared_at | date: 'dd/MM/yyyy')
+                    : 'Sin fecha'
+                }}
               </strong>
             </div>
 
             <div class="actions">
               <a mat-button [routerLink]="['/jobs', job.id]">Detalle</a>
               <a mat-stroked-button [routerLink]="['/jobs', job.id, 'generate']">
-                Generar mensaje
+                {{ job.aplicado ? 'Ver material' : 'Revisar y enviar' }}
               </a>
               <button mat-flat-button type="button" (click)="openOffer(job)">Abrir oferta</button>
             </div>

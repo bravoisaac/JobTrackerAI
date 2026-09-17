@@ -10,11 +10,12 @@ import {
   of,
   startWith,
   switchMap,
-  tap
+  tap,
 } from 'rxjs';
 
 import { JobService } from './job.service';
 import { Job } from './types';
+import { PrepareApplicationsRequest } from './types';
 import { SettingsStore } from '../settings/settings.store';
 
 type JobsState = {
@@ -43,37 +44,37 @@ export class JobsStore {
 
   readonly searchControl = new FormControl('', { nonNullable: true });
   readonly techControl = new FormControl(this.initialSettings.preferredTechnology, {
-    nonNullable: true
+    nonNullable: true,
   });
   readonly locationControl = new FormControl(this.initialSettings.preferredLocation, {
-    nonNullable: true
+    nonNullable: true,
   });
   readonly minScoreControl = new FormControl<number | null>(this.initialSettings.minScoreDefault);
   readonly hideAppliedControl = new FormControl(this.initialSettings.hideAppliedByDefault, {
-    nonNullable: true
+    nonNullable: true,
   });
 
   private readonly search$ = this.searchControl.valueChanges.pipe(
     startWith(this.searchControl.value),
     debounceTime(250),
-    distinctUntilChanged()
+    distinctUntilChanged(),
   );
   private readonly tech$ = this.techControl.valueChanges.pipe(
     startWith(this.techControl.value),
-    distinctUntilChanged()
+    distinctUntilChanged(),
   );
   private readonly location$ = this.locationControl.valueChanges.pipe(
     startWith(this.locationControl.value),
     debounceTime(150),
-    distinctUntilChanged()
+    distinctUntilChanged(),
   );
   private readonly minScore$ = this.minScoreControl.valueChanges.pipe(
     startWith(this.minScoreControl.value),
-    distinctUntilChanged()
+    distinctUntilChanged(),
   );
   private readonly hideApplied$ = this.hideAppliedControl.valueChanges.pipe(
     startWith(this.hideAppliedControl.value),
-    distinctUntilChanged()
+    distinctUntilChanged(),
   );
 
   readonly vm$ = combineLatest([
@@ -82,10 +83,12 @@ export class JobsStore {
     this.tech$,
     this.location$,
     this.minScore$,
-    this.hideApplied$
+    this.hideApplied$,
   ]).pipe(
     map(([state, search, tech, location, minScore, hideApplied]) => {
-      const jobsSorted = [...state.jobs].sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0));
+      const jobsSorted = [...state.jobs].sort(
+        (a, b) => (b.match_score ?? 0) - (a.match_score ?? 0),
+      );
 
       const searchNorm = search.trim().toLowerCase();
       const techNorm = tech.trim().toLowerCase();
@@ -121,9 +124,9 @@ export class JobsStore {
         jobsCount,
         appliedCount,
         filteredJobs,
-        applicationsChart: buildApplicationsChart(state.jobs)
+        applicationsChart: buildApplicationsChart(state.jobs),
       } satisfies JobsVm;
-    })
+    }),
   );
 
   constructor() {
@@ -146,8 +149,8 @@ export class JobsStore {
         this.state$.next({
           loading: false,
           jobs: this.state$.value.jobs,
-          error: (e as any)?.message ?? 'Error cargando trabajos'
-        })
+          error: (e as any)?.message ?? 'Error cargando trabajos',
+        }),
     });
   }
 
@@ -156,10 +159,21 @@ export class JobsStore {
       switchMap(() => this.jobService.apply(jobId)),
       tap(() => {
         const nextJobs = this.state$.value.jobs.map((j) =>
-          j.id === jobId ? { ...j, aplicado: true } : j
+          j.id === jobId ? { ...j, aplicado: true } : j,
         );
         this.state$.next({ ...this.state$.value, jobs: nextJobs });
-      })
+      }),
+    );
+  }
+
+  prepareApplications(payload: PrepareApplicationsRequest) {
+    return this.jobService.prepareApplications(payload).pipe(
+      tap((response) => {
+        if (!response.prepared.length) return;
+        const preparedById = new Map(response.prepared.map((job) => [job.id, job]));
+        const jobs = this.state$.value.jobs.map((job) => preparedById.get(job.id) ?? job);
+        this.state$.next({ ...this.state$.value, jobs });
+      }),
     );
   }
 
@@ -208,9 +222,9 @@ function buildApplicationsChart(jobs: Job[]) {
         backgroundColor: 'rgba(33, 150, 243, 0.35)',
         borderColor: 'rgba(33, 150, 243, 0.9)',
         borderWidth: 1,
-        borderRadius: 8
-      }
-    ]
+        borderRadius: 8,
+      },
+    ],
   };
 
   const options: ChartConfiguration['options'] = {
@@ -218,8 +232,8 @@ function buildApplicationsChart(jobs: Job[]) {
     plugins: { legend: { display: false } },
     scales: {
       x: { grid: { display: false } },
-      y: { beginAtZero: true }
-    }
+      y: { beginAtZero: true },
+    },
   };
 
   return { data, options };

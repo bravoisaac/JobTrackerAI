@@ -155,6 +155,11 @@ mat-progress-bar.score--low {
   color: var(--jd-mint);
 }
 
+.chip--ready {
+  background: color-mix(in oklab, #2563eb 10%, white);
+  color: #1d4ed8;
+}
+
 .application-card__side {
   display: flex;
   flex-direction: column;

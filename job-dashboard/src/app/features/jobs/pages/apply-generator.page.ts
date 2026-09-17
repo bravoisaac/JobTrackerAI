@@ -24,10 +24,10 @@ import { ProfileStore } from '../../profile/profile.store';
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
   ],
   templateUrl: './apply-generator.page.html',
-  styleUrl: './apply-generator.page.scss'
+  styleUrl: './apply-generator.page.scss',
 })
 export class ApplyGeneratorPageComponent {
   private readonly route = inject(ActivatedRoute);
@@ -41,20 +41,24 @@ export class ApplyGeneratorPageComponent {
   readonly mensajeControl = new FormControl('', { nonNullable: true });
   readonly cvControl = new FormControl('', { nonNullable: true });
 
+  constructor() {
+    this.jobsStore.ensureLoaded();
+  }
+
   readonly vm$ = this.route.paramMap.pipe(
     map((params) => Number(params.get('id'))),
     switchMap((jobId) =>
       this.jobService.generate({
         job_id: jobId,
-        profile: this.profileStore.snapshot()
-      })
+        profile: this.profileStore.snapshot(),
+      }),
     ),
     map((res) => {
       this.correoControl.setValue(res.correo ?? '');
       this.mensajeControl.setValue(res.mensaje_linkedin ?? '');
       this.cvControl.setValue(res.cv ?? '');
       return res;
-    })
+    }),
   );
 
   copyCorreo() {
@@ -81,7 +85,17 @@ export class ApplyGeneratorPageComponent {
   markApplied() {
     const jobId = Number(this.route.snapshot.paramMap.get('id'));
     this.jobsStore.applyToJob(jobId).subscribe({
-      next: () => this.snackBar.open('Marcado como aplicado', 'Cerrar', { duration: 2500 })
+      next: () => this.snackBar.open('Marcado como aplicado', 'Cerrar', { duration: 2500 }),
     });
+  }
+
+  openApplicationPortal() {
+    const jobId = Number(this.route.snapshot.paramMap.get('id'));
+    const job = this.jobsStore.snapshot().jobs.find((item) => item.id === jobId);
+    if (!job?.link) {
+      this.snackBar.open('La oferta no tiene un enlace válido.', 'Cerrar', { duration: 3000 });
+      return;
+    }
+    window.open(job.link, '_blank', 'noopener');
   }
 }

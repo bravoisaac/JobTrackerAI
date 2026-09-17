@@ -1,26 +1,38 @@
-# Job Dashboard
+# Postular App
 
-Aplicacion web para gestionar postulaciones laborales con apoyo de IA. Permite centralizar ofertas, medir el avance del pipeline, descubrir nuevas oportunidades y generar textos de postulacion adaptados al perfil del candidato.
+Aplicación web para descubrir ofertas laborales, medir su compatibilidad con el perfil del candidato y organizar postulaciones con apoyo de inteligencia artificial.
 
-![Dashboard](docs/images/dashboard.png)
+La aplicación centraliza oportunidades, genera material personalizado —correo, mensaje de LinkedIn y CV adaptado— y prepara una cola de postulaciones para LinkedIn, Computrabajo y otros portales.
 
-## Contenido
+![Dashboard principal](docs/images/dashboard.png)
 
-- `job-dashboard/`: frontend Angular con Angular Material, rutas standalone, SCSS y graficos con Chart.js.
-- `job-backend/`: backend Express con persistencia local en JSON e integracion con OpenAI.
-- `docs/images/`: capturas de pantalla usadas en este README.
+## Características
 
-## Funcionalidades
+- Dashboard con indicadores de oportunidades y postulaciones.
+- Descubrimiento de ofertas mediante IA y búsqueda web.
+- Importación y almacenamiento local de trabajos.
+- Ordenamiento por porcentaje de compatibilidad.
+- Filtros por texto, tecnología, ubicación y score mínimo.
+- Perfil profesional reutilizable para generar postulaciones.
+- Generación de correo, mensaje de LinkedIn y CV ATS adaptado.
+- Selección de LinkedIn, Computrabajo y otros portales.
+- Preparación por lote según plataforma y match mínimo.
+- Cola con estados `Lista para revisar` y `Enviada`.
+- Estadísticas de postulaciones por fecha.
+- Modo de demostración sin consumo de la API de OpenAI.
 
-- Dashboard con KPIs de trabajos, postulaciones y tasa de avance.
-- Lista de trabajos ordenada por match IA.
-- Filtros por texto, tecnologia, ubicacion y score minimo.
-- Marcado de trabajos como postulados.
-- Detalle de oferta con informacion, tecnologias y razones del match.
-- Generador de correo, mensaje de LinkedIn y CV adaptado a una oferta.
-- Perfil personal para que la IA use datos del candidato.
-- Descubrimiento de trabajos mediante IA y busqueda web.
-- Estadisticas de postulaciones por fecha.
+## Flujo de uso
+
+1. Completa tu información en **Perfil**.
+2. Configura las plataformas y el match mínimo en **Configuración**.
+3. Descubre o importa ofertas desde **Trabajos**.
+4. Presiona **Preparar seleccionadas** para crear la cola.
+5. En **Postulaciones**, revisa cada oportunidad preparada.
+6. Genera y edita el correo, mensaje y CV.
+7. Abre el portal, completa las preguntas particulares y confirma el envío.
+8. Marca la postulación como enviada.
+
+> La app utiliza postulación asistida. No guarda contraseñas de portales, no resuelve CAPTCHA y no declara una postulación como enviada sin confirmación del usuario.
 
 ## Capturas
 
@@ -32,31 +44,38 @@ Aplicacion web para gestionar postulaciones laborales con apoyo de IA. Permite c
 
 ![Perfil del candidato](docs/images/profile.png)
 
-### Estadisticas
+### Estadísticas
 
-![Estadisticas](docs/images/stats.png)
+![Estadísticas](docs/images/stats.png)
 
-## Stack Tecnico
+## Tecnologías
 
-| Capa | Tecnologia |
+| Capa | Tecnología |
 | --- | --- |
-| Frontend | Angular 21, Angular Material, SCSS |
-| Graficos | Chart.js, ng2-charts |
-| Backend | Node.js, Express |
-| IA | OpenAI API |
+| Frontend | Angular 21, Angular Material y SCSS |
+| Gráficos | Chart.js y ng2-charts |
+| Backend | Node.js y Express |
+| Inteligencia artificial | OpenAI API con búsqueda web |
 | Persistencia | Archivo JSON local |
 
 ## Requisitos
 
 - Node.js 20 o superior.
 - npm.
-- Una `OPENAI_API_KEY` con billing activo si se usaran funciones reales de IA.
+- Una `OPENAI_API_KEY` con crédito disponible para utilizar las funciones reales de IA.
 
-Para una demo sin credito de OpenAI, el backend soporta `MOCK_ON_QUOTA=1`.
+También puedes ejecutar el proyecto sin una API key válida utilizando el modo de demostración.
 
-## Configuracion
+## Instalación
 
-### 1. Backend
+Clona el repositorio y entra en la carpeta del proyecto:
+
+```powershell
+git clone <URL_DEL_REPOSITORIO>
+cd Postular_app
+```
+
+### Backend
 
 ```powershell
 cd job-backend
@@ -64,7 +83,7 @@ npm.cmd install
 Copy-Item .env.example .env
 ```
 
-Edita `job-backend/.env`:
+Configura `job-backend/.env`:
 
 ```env
 OPENAI_API_KEY=tu_api_key
@@ -72,21 +91,21 @@ PORT=8000
 MOCK_ON_QUOTA=1
 ```
 
-Levanta el backend:
+Inicia el servidor:
 
 ```powershell
 npm.cmd run dev
 ```
 
-Comprueba que este activo:
+Comprueba el estado del backend:
 
 ```powershell
 curl.exe http://localhost:8000/health
 ```
 
-### 2. Frontend
+### Frontend
 
-En otra terminal:
+Abre otra terminal:
 
 ```powershell
 cd job-dashboard
@@ -94,42 +113,74 @@ npm.cmd install
 npm.cmd start
 ```
 
-Abre la app en:
+La aplicación estará disponible en [http://localhost:4200](http://localhost:4200).
 
-```text
-http://localhost:4200
+El frontend consume por defecto `http://localhost:8000`. Si modificas el puerto del backend, actualiza `job-dashboard/src/app/core/config/api-base-url.ts`.
+
+## Configuración de postulaciones
+
+En la pantalla **Configuración** puedes definir:
+
+- Plataformas permitidas: LinkedIn, Computrabajo y otros portales.
+- Match mínimo requerido para entrar en la cola.
+- Tecnología y ubicación preferidas.
+- Visibilidad predeterminada de ofertas ya postuladas.
+
+El botón **Preparar seleccionadas** procesa hasta 10 ofertas no postuladas que cumplan las preferencias. El backend detecta la plataforma a partir del dominio y guarda el estado `ready_for_review`.
+
+## Modo de demostración
+
+Configura la siguiente variable cuando no tengas crédito disponible en OpenAI:
+
+```env
+MOCK_ON_QUOTA=1
 ```
 
-El frontend consume por defecto:
+En este modo:
 
-```text
-http://localhost:8000
-```
+- `/discover` entrega oportunidades simuladas con enlaces de búsqueda.
+- `/generate` crea un correo, mensaje y CV de ejemplo usando el perfil local.
+- La configuración, cola y seguimiento continúan funcionando normalmente.
 
-Si cambias el puerto del backend, actualiza `job-dashboard/src/app/core/config/api-base-url.ts`.
+## API
 
-## Endpoints del Backend
-
-| Metodo | Ruta | Descripcion |
+| Método | Ruta | Descripción |
 | --- | --- | --- |
-| `GET` | `/health` | Estado del backend |
-| `GET` | `/jobs` | Lista de trabajos guardados |
-| `POST` | `/jobs` | Crea/importa un trabajo |
-| `PUT` | `/jobs/:id/apply` | Marca un trabajo como postulado |
-| `POST` | `/generate` | Genera correo, LinkedIn y CV con IA |
-| `POST` | `/discover` | Busca ofertas con IA |
+| `GET` | `/health` | Comprueba el estado del backend |
+| `GET` | `/jobs` | Obtiene las ofertas guardadas |
+| `POST` | `/jobs` | Importa una oferta |
+| `PUT` | `/jobs/:id/apply` | Marca una postulación como enviada |
+| `GET` | `/application-platforms` | Obtiene las plataformas disponibles |
+| `POST` | `/applications/prepare-batch` | Prepara ofertas según plataforma y score |
+| `POST` | `/generate` | Genera correo, mensaje y CV con IA |
+| `POST` | `/discover` | Descubre ofertas mediante IA y búsqueda web |
 
-## Estructura
+Ejemplo para preparar una cola:
+
+```json
+{
+  "platforms": ["linkedin", "computrabajo"],
+  "min_score": 70,
+  "limit": 10,
+  "profile": {
+    "fullName": "Nombre Apellido",
+    "email": "correo@ejemplo.com"
+  }
+}
+```
+
+## Estructura del proyecto
 
 ```text
 Postular_app/
 |-- job-backend/
-|   |-- src/
-|   |   |-- server.mjs
-|   |   |-- store.mjs
-|   |   `-- openai.mjs
 |   |-- data/
 |   |   `-- jobs.json
+|   |-- src/
+|   |   |-- application-platforms.mjs
+|   |   |-- openai.mjs
+|   |   |-- server.mjs
+|   |   `-- store.mjs
 |   `-- package.json
 |-- job-dashboard/
 |   |-- src/
@@ -142,24 +193,41 @@ Postular_app/
 `-- README.md
 ```
 
-## Modo Demo
+## Comandos útiles
 
-Si OpenAI responde con errores de cuota o no tienes credito activo, configura:
+```powershell
+# Backend
+cd job-backend
+npm.cmd run dev
 
-```env
-MOCK_ON_QUOTA=1
+# Backend con recarga automática
+npm.cmd run dev:watch
+
+# Frontend
+cd job-dashboard
+npm.cmd start
+
+# Build de producción
+npm.cmd run build
+
+# Pruebas del frontend
+npm.cmd test
 ```
 
-Con ese valor:
+## Seguridad y limitaciones
 
-- `/discover` devuelve resultados mock.
-- `/generate` devuelve textos mock para correo, LinkedIn y CV.
+- La `OPENAI_API_KEY` solo debe existir en `job-backend/.env`.
+- No publiques archivos `.env` ni claves privadas.
+- El perfil se guarda localmente en el navegador.
+- Las ofertas y estados se almacenan en `job-backend/data/jobs.json`.
+- LinkedIn y Computrabajo requieren revisión y envío final desde la sesión del usuario.
+- Una automatización completa solo debe implementarse mediante APIs oficiales o integraciones expresamente autorizadas por cada plataforma.
 
-## Problemas Comunes
+## Problemas comunes
 
 ### `net::ERR_CONNECTION_REFUSED :8000`
 
-El backend no esta corriendo o esta usando otro puerto. Ejecuta:
+El backend no está ejecutándose o utiliza otro puerto:
 
 ```powershell
 cd job-backend
@@ -168,24 +236,17 @@ npm.cmd run dev
 
 ### `429 insufficient_quota`
 
-La cuenta de OpenAI no tiene credito o billing activo. Usa una API key con credito o activa `MOCK_ON_QUOTA=1`.
+La cuenta de OpenAI no tiene crédito disponible. Habilita billing o configura `MOCK_ON_QUOTA=1`.
 
-### Error de extension del navegador
+### La cola queda vacía
 
-Si aparece un error de una URL `chrome-extension://`, normalmente viene de una extension instalada, no de la app. Prueba con modo incognito o desactiva extensiones.
+Comprueba que:
 
-## Comandos Utiles
+- El perfil tenga nombre y correo.
+- Existan ofertas sin postular.
+- La plataforma esté seleccionada.
+- El score de la oferta sea igual o superior al mínimo configurado.
 
-```powershell
-# Backend
-cd job-backend
-npm.cmd run dev
+### Error `chrome-extension://`
 
-# Frontend
-cd job-dashboard
-npm.cmd start
-
-# Build frontend
-cd job-dashboard
-npm.cmd run build
-```
+Generalmente proviene de una extensión instalada en el navegador. Prueba en modo incógnito o desactiva temporalmente las extensiones.

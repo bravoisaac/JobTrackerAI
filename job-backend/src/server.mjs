@@ -4,6 +4,11 @@ import cors from 'cors';
 
 import { loadJobs, nextId, saveJobs } from './store.mjs';
 import { extractJson, getModel, getOpenAIClient } from './openai.mjs';
+import {
+  APPLICATION_PLATFORMS,
+  detectApplicationPlatform,
+  prepareApplication
+} from './application-platforms.mjs';
 
 const app = express();
 app.use(express.json({ limit: '2mb' }));
@@ -170,11 +175,20 @@ app.get('/health', (req, res) => {
   res.json({ ok: true, service: 'job-backend', time: new Date().toISOString() });
 });
 
+app.get('/application-platforms', (req, res) => {
+  res.json({ platforms: APPLICATION_PLATFORMS });
+});
+
 app.get(
   '/jobs',
   asyncRoute(async (req, res) => {
   const jobs = await loadJobs();
-  res.json(jobs);
+  res.json(
+    jobs.map((job) => ({
+      ...job,
+      application_platform: job.application_platform ?? detectApplicationPlatform(job?.link)
+    }))
+  );
   })
 );
 
@@ -194,7 +208,8 @@ app.post(
     aplicado: Boolean(payload.aplicado ?? false),
     match_score: Number(payload.match_score ?? 0),
     tecnologias: Array.isArray(payload.tecnologias) ? payload.tecnologias.map(String) : [],
-    ia_razones: Array.isArray(payload.ia_razones) ? payload.ia_razones.map(String) : []
+    ia_razones: Array.isArray(payload.ia_razones) ? payload.ia_razones.map(String) : [],
+    application_platform: detectApplicationPlatform(payload.link)
   };
 
   if (!job.titulo || !job.empresa || !job.link) {
@@ -222,9 +237,63 @@ app.put(
   const idx = jobs.findIndex((j) => Number(j.id) === id);
   if (idx === -1) return res.status(404).json({ detail: 'Job no encontrado' });
 
-  jobs[idx] = { ...jobs[idx], aplicado: true, aplicado_at: new Date().toISOString() };
+  jobs[idx] = {
+    ...jobs[idx],
+    aplicado: true,
+    aplicado_at: new Date().toISOString(),
+    application_status: 'submitted'
+  };
   await saveJobs(jobs);
   res.json(jobs[idx]);
+  })
+);
+
+app.post(
+  '/applications/prepare-batch',
+  asyncRoute(async (req, res) => {
+  const payload = req.body ?? {};
+  const profile = payload.profile ?? {};
+  const fullName = cleanText(profile.fullName, 160);
+  const email = cleanText(profile.email, 320);
+  if (!fullName || !email) {
+    return res.status(400).json({
+      detail: 'Completa nombre y email en tu perfil antes de preparar postulaciones.'
+    });
+  }
+
+  const allowedPlatforms = new Set(APPLICATION_PLATFORMS.map((platform) => platform.id));
+  const requestedPlatforms = Array.isArray(payload.platforms)
+    ? payload.platforms.map(String).filter((id) => allowedPlatforms.has(id))
+    : [];
+  if (!requestedPlatforms.length) {
+    return res.status(400).json({ detail: 'Selecciona al menos una plataforma.' });
+  }
+
+  const minScore = Math.max(0, Math.min(100, Number(payload.min_score ?? 0) || 0));
+  const maxItems = Math.max(1, Math.min(25, Number(payload.limit ?? 10) || 10));
+  const selected = new Set(requestedPlatforms);
+  const jobs = await loadJobs();
+  const prepared = [];
+
+  for (let index = 0; index < jobs.length && prepared.length < maxItems; index += 1) {
+    const job = jobs[index];
+    const platformId = detectApplicationPlatform(job?.link);
+    if (job?.aplicado || job?.application_status === 'ready_for_review') continue;
+    if (!selected.has(platformId) || Number(job?.match_score ?? 0) < minScore) continue;
+
+    jobs[index] = { ...job, ...prepareApplication(job), application_platform: platformId };
+    prepared.push(jobs[index]);
+  }
+
+  if (prepared.length) await saveJobs(jobs);
+  res.json({
+    prepared,
+    total: prepared.length,
+    mode: 'assisted',
+    message: prepared.length
+      ? 'Postulaciones preparadas para revisión. El envío final se realiza en cada portal.'
+      : 'No hay ofertas nuevas que cumplan los filtros seleccionados.'
+  });
   })
 );
 

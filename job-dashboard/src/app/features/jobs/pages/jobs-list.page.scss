@@ -74,7 +74,10 @@
   border-radius: 22px;
   padding: 22px;
   background: var(--jd-paper);
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
   display: flex;
   flex-direction: column;
 }

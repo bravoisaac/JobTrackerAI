@@ -72,6 +72,25 @@ p,
   border-radius: 22px;
 }
 
+.panel--wide {
+  grid-column: 1 / -1;
+}
+
+.safety-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--jd-mint) 9%, white);
+  color: var(--jd-muted);
+  font-size: 12px;
+}
+
+.safety-note mat-icon {
+  color: var(--jd-mint);
+}
+
 .panel__head {
   display: flex;
   align-items: flex-start;

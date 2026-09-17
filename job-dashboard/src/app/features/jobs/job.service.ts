@@ -9,7 +9,9 @@ import {
   DiscoverJobsResponse,
   GenerateRequest,
   GenerateResponse,
-  Job
+  Job,
+  PrepareApplicationsRequest,
+  PrepareApplicationsResponse,
 } from './types';
 
 export interface ApiError {
@@ -36,6 +38,12 @@ export class JobService {
   apply(id: number) {
     return this.http
       .put<Job | { ok: boolean }>(`${this.baseUrl}/jobs/${id}/apply`, {})
+      .pipe(catchError((e) => this.toApiError(e)));
+  }
+
+  prepareApplications(payload: PrepareApplicationsRequest) {
+    return this.http
+      .post<PrepareApplicationsResponse>(`${this.baseUrl}/applications/prepare-batch`, payload)
       .pipe(catchError((e) => this.toApiError(e)));
   }
 

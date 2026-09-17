@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import type { ApplicationPlatformId } from '../jobs/types';
 
 const STORAGE_KEY = 'job-dashboard.settings.v1';
 
@@ -7,13 +8,17 @@ export interface AppSettings {
   minScoreDefault: number;
   preferredTechnology: string;
   preferredLocation: string;
+  applicationPlatforms: ApplicationPlatformId[];
+  applicationMinScore: number;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   hideAppliedByDefault: true,
   minScoreDefault: 0,
   preferredTechnology: '',
-  preferredLocation: ''
+  preferredLocation: '',
+  applicationPlatforms: ['linkedin', 'computrabajo'],
+  applicationMinScore: 70,
 };
 
 @Injectable({ providedIn: 'root' })
@@ -48,10 +53,24 @@ export class SettingsStore {
 
 function normalizeSettings(settings: AppSettings): AppSettings {
   const minScore = Number(settings.minScoreDefault ?? 0);
+  const applicationMinScore = Number(settings.applicationMinScore ?? 70);
+  const validPlatforms = new Set<ApplicationPlatformId>(['linkedin', 'computrabajo', 'external']);
+  const applicationPlatforms = Array.isArray(settings.applicationPlatforms)
+    ? settings.applicationPlatforms.filter((id): id is ApplicationPlatformId =>
+        validPlatforms.has(id),
+      )
+    : DEFAULT_SETTINGS.applicationPlatforms;
   return {
     hideAppliedByDefault: Boolean(settings.hideAppliedByDefault),
     minScoreDefault: Math.max(0, Math.min(100, Number.isFinite(minScore) ? minScore : 0)),
     preferredTechnology: String(settings.preferredTechnology ?? '').trim(),
-    preferredLocation: String(settings.preferredLocation ?? '').trim()
+    preferredLocation: String(settings.preferredLocation ?? '').trim(),
+    applicationPlatforms: applicationPlatforms.length
+      ? [...new Set(applicationPlatforms)]
+      : DEFAULT_SETTINGS.applicationPlatforms,
+    applicationMinScore: Math.max(
+      0,
+      Math.min(100, Number.isFinite(applicationMinScore) ? applicationMinScore : 70),
+    ),
   };
 }
