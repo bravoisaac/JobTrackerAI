@@ -25,6 +25,11 @@ export const routes: Routes = [
           )
       },
       {
+        path: 'yo-aplico',
+        loadChildren: () =>
+          import('./features/yo-aplico/yo-aplico.routes').then((m) => m.YO_APLICO_ROUTES)
+      },
+      {
         path: 'profile',
         loadChildren: () => import('./features/profile/profile.routes').then((m) => m.PROFILE_ROUTES)
       },

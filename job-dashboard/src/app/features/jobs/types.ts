@@ -80,6 +80,33 @@ export interface DiscoverJobsResponse {
   jobs: DiscoveredJob[];
 }
 
+export type BrowserAgentStatus = 'running' | 'completed' | 'failed';
+
+export interface BrowserAgentRequest {
+  profile: CandidateProfile;
+  platforms: ApplicationPlatformId[];
+  preferredTechnology?: string;
+  location?: string;
+  min_score: number;
+  limit?: number;
+}
+
+export interface BrowserAgentSession {
+  id: string;
+  status: BrowserAgentStatus;
+  phase: string;
+  message: string;
+  progress: number;
+  current_platform?: ApplicationPlatformId;
+  found: number;
+  imported: number;
+  prepared: number;
+  warnings: string[];
+  results: Job[];
+  started_at: string;
+  finished_at?: string;
+}
+
 export function applicationPlatformLabel(platform?: ApplicationPlatformId) {
   if (platform === 'linkedin') return 'LinkedIn';
   if (platform === 'computrabajo') return 'Computrabajo';

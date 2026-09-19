@@ -37,6 +37,7 @@ export class MainLayoutComponent {
   readonly nav: NavItem[] = [
     { label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
     { label: 'Trabajos', icon: 'work', to: '/jobs' },
+    { label: 'Yo aplico', icon: 'smart_toy', to: '/yo-aplico' },
     { label: 'Postulaciones', icon: 'send', to: '/applications' },
     { label: 'Perfil', icon: 'person', to: '/profile' },
     { label: 'Configuración', icon: 'settings', to: '/settings' },

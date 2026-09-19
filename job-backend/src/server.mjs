@@ -9,8 +9,10 @@ import {
   detectApplicationPlatform,
   prepareApplication
 } from './application-platforms.mjs';
+import { runBrowserJobSearch } from './browser-agent.mjs';
 
 const app = express();
+const browserAgentSessions = new Map();
 app.use(express.json({ limit: '2mb' }));
 app.use(
   cors({
@@ -165,6 +167,39 @@ function normalizeLink(link) {
   }
 }
 
+function publicBrowserSession(session) {
+  const {
+    id,
+    status,
+    phase,
+    message,
+    progress,
+    current_platform,
+    found,
+    imported,
+    prepared,
+    warnings,
+    results,
+    started_at,
+    finished_at
+  } = session;
+  return {
+    id,
+    status,
+    phase,
+    message,
+    progress,
+    current_platform,
+    found,
+    imported,
+    prepared,
+    warnings,
+    results,
+    started_at,
+    finished_at
+  };
+}
+
 const asyncRoute =
   (handler) =>
   (req, res, next) => {
@@ -177,6 +212,120 @@ app.get('/health', (req, res) => {
 
 app.get('/application-platforms', (req, res) => {
   res.json({ platforms: APPLICATION_PLATFORMS });
+});
+
+app.post('/browser-agent/start', (req, res) => {
+  const payload = req.body ?? {};
+  const profile = payload.profile ?? {};
+  const fullName = cleanText(profile.fullName, 160);
+  const email = cleanText(profile.email, 320);
+  const searchProfile = cleanText(profile.targetRoles, 240) || cleanText(profile.skills, 500);
+  if (!fullName || !email) {
+    return res.status(400).json({
+      detail: 'Completa nombre y email en tu perfil antes de iniciar Yo aplico.'
+    });
+  }
+  if (!searchProfile && !cleanText(payload.preferredTechnology, 120)) {
+    return res.status(400).json({
+      detail: 'Agrega cargos objetivo o habilidades en tu perfil para buscar trabajos.'
+    });
+  }
+
+  const running = [...browserAgentSessions.values()].find((session) => session.status === 'running');
+  if (running) {
+    return res.status(409).json({
+      detail: 'Ya hay una sesión de Yo aplico navegando.',
+      session: publicBrowserSession(running)
+    });
+  }
+
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const session = {
+    id,
+    status: 'running',
+    phase: 'queued',
+    message: 'Preparando el agente de navegador…',
+    progress: 0,
+    found: 0,
+    imported: 0,
+    prepared: 0,
+    warnings: [],
+    results: [],
+    started_at: new Date().toISOString()
+  };
+  browserAgentSessions.set(id, session);
+  res.status(202).json(publicBrowserSession(session));
+
+  setImmediate(async () => {
+    try {
+      const search = await runBrowserJobSearch(payload, (update) => Object.assign(session, update));
+      const jobs = await loadJobs();
+      const minScore = Math.max(0, Math.min(100, Number(payload.min_score ?? 70) || 70));
+      const existingByLink = new Map(jobs.map((job) => [normalizeLink(job?.link), job]));
+      const imported = [];
+      const prepared = [];
+
+      for (const candidate of search.jobs) {
+        const normalizedLink = normalizeLink(candidate.link);
+        const existing = existingByLink.get(normalizedLink);
+        if (existing) {
+          if (
+            !existing.aplicado &&
+            existing.application_status !== 'ready_for_review' &&
+            Number(existing.match_score ?? 0) >= minScore
+          ) {
+            Object.assign(existing, prepareApplication(existing));
+            prepared.push(existing);
+          }
+          continue;
+        }
+
+        const job = {
+          ...candidate,
+          id: nextId(jobs),
+          application_platform:
+            candidate.application_platform ?? detectApplicationPlatform(candidate.link)
+        };
+        if (Number(job.match_score ?? 0) >= minScore) {
+          Object.assign(job, prepareApplication(job));
+          prepared.push(job);
+        }
+        jobs.push(job);
+        existingByLink.set(normalizedLink, job);
+        imported.push(job);
+      }
+
+      if (imported.length || prepared.length) await saveJobs(jobs);
+      Object.assign(session, {
+        status: 'completed',
+        phase: 'completed',
+        message: search.jobs.length
+          ? `Listo: ${imported.length} ofertas importadas y ${prepared.length} preparadas para revisar.`
+          : 'La navegación terminó sin encontrar ofertas públicas nuevas.',
+        progress: 100,
+        found: search.jobs.length,
+        imported: imported.length,
+        prepared: prepared.length,
+        warnings: search.warnings,
+        results: imported.slice(0, 12),
+        finished_at: new Date().toISOString()
+      });
+    } catch (error) {
+      Object.assign(session, {
+        status: 'failed',
+        phase: 'failed',
+        message: String(error?.message ?? 'No se pudo ejecutar el agente de navegador.').split('\n')[0],
+        progress: 100,
+        finished_at: new Date().toISOString()
+      });
+    }
+  });
+});
+
+app.get('/browser-agent/status/:id', (req, res) => {
+  const session = browserAgentSessions.get(String(req.params.id));
+  if (!session) return res.status(404).json({ detail: 'Sesión de Yo aplico no encontrada.' });
+  res.json(publicBrowserSession(session));
 });
 
 app.get(

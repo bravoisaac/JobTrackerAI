@@ -1,0 +1,92 @@
+<section class="hero">
+  <div class="hero__copy">
+    <div class="eyebrow"><mat-icon>smart_toy</mat-icon> Agente local de búsqueda</div>
+    <h1>Yo aplico</h1>
+    <p>
+      Abre Microsoft Edge y navega por portales de empleo usando tus cargos, habilidades,
+      ubicación y match mínimo. Las mejores ofertas quedan listas para que las revises.
+    </p>
+
+    <div class="hero__actions">
+      <button mat-flat-button (click)="start()" [disabled]="starting() || session()?.status === 'running'">
+        <mat-icon>{{ session()?.status === 'running' ? 'hourglass_top' : 'play_arrow' }}</mat-icon>
+        {{ session()?.status === 'running' ? 'Navegando…' : 'Iniciar Yo aplico' }}
+      </button>
+      <a mat-stroked-button routerLink="/profile"><mat-icon>person</mat-icon> Revisar perfil</a>
+    </div>
+
+    <div class="safety-note">
+      <mat-icon>verified_user</mat-icon>
+      No guarda contraseñas, no resuelve CAPTCHA y no confirma envíos finales por ti.
+    </div>
+  </div>
+
+  <mat-card class="preferences">
+    <div class="preferences__title">Criterios activos</div>
+    <dl>
+      <div>
+        <dt>Cargos</dt>
+        <dd>{{ profileStore.profile().targetRoles || 'Sin definir' }}</dd>
+      </div>
+      <div>
+        <dt>Habilidades</dt>
+        <dd>{{ profileStore.profile().skills || 'Sin definir' }}</dd>
+      </div>
+      <div>
+        <dt>Ubicación</dt>
+        <dd>{{ settingsStore.settings().preferredLocation || profileStore.profile().location || 'Flexible' }}</dd>
+      </div>
+      <div>
+        <dt>Match mínimo</dt>
+        <dd>{{ settingsStore.settings().applicationMinScore }}%</dd>
+      </div>
+    </dl>
+    <mat-chip-set>
+      @for (platform of settingsStore.settings().applicationPlatforms; track platform) {
+        <mat-chip>{{ platformLabel(platform) }}</mat-chip>
+      }
+    </mat-chip-set>
+    <a mat-button routerLink="/settings">Cambiar criterios</a>
+  </mat-card>
+</section>
+
+@if (session(); as run) {
+  <mat-card class="status" [class.status--failed]="run.status === 'failed'">
+    <div class="status__top">
+      <div>
+        <div class="status__label">Estado del agente</div>
+        <h2>{{ run.message }}</h2>
+      </div>
+      <span class="status__badge">{{ run.status === 'running' ? 'En curso' : run.status === 'completed' ? 'Finalizado' : 'Error' }}</span>
+    </div>
+    <mat-progress-bar [mode]="run.status === 'running' ? 'determinate' : 'determinate'" [value]="run.progress" />
+
+    <div class="metrics">
+      <div><strong>{{ run.found }}</strong><span>Encontradas</span></div>
+      <div><strong>{{ run.imported }}</strong><span>Importadas</span></div>
+      <div><strong>{{ run.prepared }}</strong><span>Para revisar</span></div>
+    </div>
+
+    @if (run.warnings.length) {
+      <div class="warnings">
+        <mat-icon>info</mat-icon>
+        <div>
+          @for (warning of run.warnings; track warning) { <p>{{ warning }}</p> }
+        </div>
+      </div>
+    }
+
+    @if (run.status === 'completed') {
+      <div class="status__actions">
+        <a mat-flat-button routerLink="/applications">Revisar postulaciones</a>
+        <a mat-stroked-button routerLink="/jobs">Ver trabajos</a>
+      </div>
+    }
+  </mat-card>
+}
+
+<section class="steps" aria-label="Cómo funciona Yo aplico">
+  <mat-card><span>1</span><mat-icon>person_search</mat-icon><h3>Lee tu perfil</h3><p>Usa cargos, habilidades y ubicación; nunca envía tus datos personales a los portales durante la búsqueda.</p></mat-card>
+  <mat-card><span>2</span><mat-icon>travel_explore</mat-icon><h3>Navega en Edge</h3><p>Abre un navegador visible, recorre los resultados públicos y evita páginas que exigen acceso o verificación.</p></mat-card>
+  <mat-card><span>3</span><mat-icon>fact_check</mat-icon><h3>Deja todo listo</h3><p>Importa las ofertas, calcula compatibilidad y prepara una cola para tu revisión antes del envío.</p></mat-card>
+</section>
