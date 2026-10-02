@@ -10,9 +10,11 @@ import {
   prepareApplication
 } from './application-platforms.mjs';
 import { runBrowserJobSearch } from './browser-agent.mjs';
+import { runBrowserApplication } from './application-agent.mjs';
 
 const app = express();
 const browserAgentSessions = new Map();
+const applicationAgentSessions = new Map();
 app.use(express.json({ limit: '2mb' }));
 app.use(
   cors({
@@ -200,6 +202,33 @@ function publicBrowserSession(session) {
   };
 }
 
+function publicApplicationSession(session) {
+  const {
+    id,
+    job_id,
+    status,
+    phase,
+    message,
+    progress,
+    fields_filled,
+    started_at,
+    finished_at,
+    job
+  } = session;
+  return {
+    id,
+    job_id,
+    status,
+    phase,
+    message,
+    progress,
+    fields_filled,
+    started_at,
+    finished_at,
+    job
+  };
+}
+
 const asyncRoute =
   (handler) =>
   (req, res, next) => {
@@ -326,6 +355,109 @@ app.get('/browser-agent/status/:id', (req, res) => {
   const session = browserAgentSessions.get(String(req.params.id));
   if (!session) return res.status(404).json({ detail: 'Sesión de Yo aplico no encontrada.' });
   res.json(publicBrowserSession(session));
+});
+
+app.post(
+  '/applications/:id/auto-apply',
+  asyncRoute(async (req, res) => {
+    const jobId = Number(req.params.id);
+    const profile = req.body?.profile ?? {};
+    const fullName = cleanText(profile.fullName, 160);
+    const email = cleanText(profile.email, 320);
+    if (!fullName || !email) {
+      return res.status(400).json({
+        detail: 'Completa nombre y email en tu perfil antes de postular.'
+      });
+    }
+
+    const jobs = await loadJobs();
+    const job = jobs.find((item) => Number(item.id) === jobId);
+    if (!job) return res.status(404).json({ detail: 'Job no encontrado' });
+    if (job.aplicado) {
+      return res.status(409).json({ detail: 'Esta oferta ya está marcada como enviada.' });
+    }
+
+    let parsedLink;
+    try {
+      parsedLink = new URL(String(job.link ?? ''));
+    } catch {
+      return res.status(400).json({ detail: 'La oferta no tiene un enlace válido.' });
+    }
+    if (!['http:', 'https:'].includes(parsedLink.protocol)) {
+      return res.status(400).json({ detail: 'El enlace de la oferta debe usar HTTP o HTTPS.' });
+    }
+
+    const running = [...applicationAgentSessions.values()].find(
+      (session) => session.status === 'running'
+    );
+    if (running) {
+      return res.status(409).json({
+        detail: 'Ya hay una postulación automática en curso.',
+        session: publicApplicationSession(running)
+      });
+    }
+
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const session = {
+      id,
+      job_id: jobId,
+      status: 'running',
+      phase: 'queued',
+      message: 'Preparando la postulación automática…',
+      progress: 0,
+      fields_filled: 0,
+      started_at: new Date().toISOString()
+    };
+    applicationAgentSessions.set(id, session);
+    res.status(202).json(publicApplicationSession(session));
+
+    setImmediate(async () => {
+      try {
+        const result = await runBrowserApplication(
+          { job, profile },
+          (update) => Object.assign(session, update)
+        );
+        if (!result.submitted) throw new Error('El portal no confirmó el envío.');
+
+        const latestJobs = await loadJobs();
+        const index = latestJobs.findIndex((item) => Number(item.id) === jobId);
+        if (index === -1) throw new Error('La oferta dejó de estar disponible en la app.');
+
+        latestJobs[index] = {
+          ...latestJobs[index],
+          aplicado: true,
+          aplicado_at: new Date().toISOString(),
+          application_status: 'submitted',
+          application_mode: 'automatic'
+        };
+        await saveJobs(latestJobs);
+
+        Object.assign(session, {
+          status: 'completed',
+          phase: 'completed',
+          message: 'Postulación enviada y confirmada por el portal.',
+          progress: 100,
+          fields_filled: result.fields_filled,
+          job: latestJobs[index],
+          finished_at: new Date().toISOString()
+        });
+      } catch (error) {
+        Object.assign(session, {
+          status: 'failed',
+          phase: 'failed',
+          message: String(error?.message ?? 'No se pudo completar la postulación.').split('\n')[0],
+          progress: 100,
+          finished_at: new Date().toISOString()
+        });
+      }
+    });
+  })
+);
+
+app.get('/application-agent/status/:id', (req, res) => {
+  const session = applicationAgentSessions.get(String(req.params.id));
+  if (!session) return res.status(404).json({ detail: 'Sesión de postulación no encontrada.' });
+  res.json(publicApplicationSession(session));
 });
 
 app.get(

@@ -3,7 +3,7 @@
     <div>
       <div class="eyebrow">Pipeline personal</div>
       <h1>Postulaciones</h1>
-      <p>Revisa la cola preparada y confirma las postulaciones que ya enviaste.</p>
+      <p>Revisa la cola y postula automáticamente desde un navegador visible.</p>
     </div>
 
     <a mat-flat-button routerLink="/jobs">
@@ -90,8 +90,33 @@
               <a mat-stroked-button [routerLink]="['/jobs', job.id, 'generate']">
                 {{ job.aplicado ? 'Ver material' : 'Revisar y enviar' }}
               </a>
+              @if (!job.aplicado) {
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="autoApply(job)"
+                  [disabled]="isAutomationRunning(job.id)"
+                >
+                  <mat-icon>{{ isAutomationRunning(job.id) ? 'hourglass_top' : 'send' }}</mat-icon>
+                  {{ isAutomationRunning(job.id) ? 'Postulando…' : 'Postular automáticamente' }}
+                </button>
+              }
               <button mat-flat-button type="button" (click)="openOffer(job)">Abrir oferta</button>
             </div>
+
+            @if (automationFor(job.id); as automation) {
+              <div
+                class="automation-status"
+                [class.automation-status--failed]="automation.status === 'failed'"
+                [class.automation-status--completed]="automation.status === 'completed'"
+              >
+                <mat-progress-bar [value]="automation.progress" />
+                <p>{{ automation.message }}</p>
+                @if (automation.status === 'running') {
+                  <small>Mantén abierta la ventana de Edge. Si pide login, CAPTCHA o una respuesta personal, complétala allí.</small>
+                }
+              </div>
+            }
           </div>
         </mat-card>
       }

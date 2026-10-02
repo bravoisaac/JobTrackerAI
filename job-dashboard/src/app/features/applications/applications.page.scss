@@ -183,6 +183,33 @@ mat-progress-bar.score--low {
   margin-top: auto;
 }
 
+.automation-status {
+  display: grid;
+  gap: 7px;
+  padding: 10px;
+  border-radius: 12px;
+  background: color-mix(in oklab, #2563eb 8%, white);
+  color: #1d4ed8;
+}
+
+.automation-status p,
+.automation-status small {
+  margin: 0;
+  color: inherit;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.automation-status--completed {
+  background: color-mix(in oklab, var(--jd-mint) 10%, white);
+  color: var(--jd-mint);
+}
+
+.automation-status--failed {
+  background: color-mix(in oklab, #dc2626 8%, white);
+  color: #b91c1c;
+}
+
 .empty {
   display: grid;
   place-items: center;

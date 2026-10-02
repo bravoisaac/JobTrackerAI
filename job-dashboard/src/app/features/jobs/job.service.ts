@@ -4,6 +4,8 @@ import { catchError, throwError } from 'rxjs';
 
 import { API_BASE_URL } from '../../core/config/api-base-url';
 import {
+  ApplicationAgentRequest,
+  ApplicationAgentSession,
   BrowserAgentRequest,
   BrowserAgentSession,
   CreateJobRequest,
@@ -72,6 +74,20 @@ export class JobService {
   getBrowserAgentStatus(id: string) {
     return this.http
       .get<BrowserAgentSession>(`${this.baseUrl}/browser-agent/status/${encodeURIComponent(id)}`)
+      .pipe(catchError((e) => this.toApiError(e)));
+  }
+
+  startApplicationAgent(jobId: number, payload: ApplicationAgentRequest) {
+    return this.http
+      .post<ApplicationAgentSession>(`${this.baseUrl}/applications/${jobId}/auto-apply`, payload)
+      .pipe(catchError((e) => this.toApiError(e)));
+  }
+
+  getApplicationAgentStatus(id: string) {
+    return this.http
+      .get<ApplicationAgentSession>(
+        `${this.baseUrl}/application-agent/status/${encodeURIComponent(id)}`,
+      )
       .pipe(catchError((e) => this.toApiError(e)));
   }
 

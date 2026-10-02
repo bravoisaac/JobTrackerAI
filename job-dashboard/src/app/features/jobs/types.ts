@@ -16,7 +16,7 @@ export interface Job {
   aplicado_at?: string;
   application_status?: 'ready_for_review' | 'submitted';
   application_platform?: ApplicationPlatformId;
-  application_mode?: 'assisted';
+  application_mode?: 'assisted' | 'automatic';
   application_prepared_at?: string;
   application_next_action?: string;
 }
@@ -105,6 +105,23 @@ export interface BrowserAgentSession {
   results: Job[];
   started_at: string;
   finished_at?: string;
+}
+
+export interface ApplicationAgentRequest {
+  profile: CandidateProfile;
+}
+
+export interface ApplicationAgentSession {
+  id: string;
+  job_id: number;
+  status: BrowserAgentStatus;
+  phase: string;
+  message: string;
+  progress: number;
+  fields_filled: number;
+  started_at: string;
+  finished_at?: string;
+  job?: Job;
 }
 
 export function applicationPlatformLabel(platform?: ApplicationPlatformId) {

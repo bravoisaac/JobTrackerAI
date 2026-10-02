@@ -166,6 +166,11 @@ export class JobsStore {
     );
   }
 
+  replaceJob(updated: Job) {
+    const jobs = this.state$.value.jobs.map((job) => (job.id === updated.id ? updated : job));
+    this.state$.next({ ...this.state$.value, jobs });
+  }
+
   prepareApplications(payload: PrepareApplicationsRequest) {
     return this.jobService.prepareApplications(payload).pipe(
       tap((response) => {
