@@ -61,6 +61,41 @@
     </div>
     <mat-progress-bar [mode]="run.status === 'running' ? 'determinate' : 'determinate'" [value]="run.progress" />
 
+    @if (run.current_url) {
+      <section class="browser-tracker" aria-label="Seguimiento del navegador">
+        <div class="browser-tracker__header">
+          <div class="browser-tracker__label">
+            <span class="live-dot" [class.live-dot--active]="run.status === 'running'"></span>
+            Seguimiento de Edge
+          </div>
+          @if (run.current_platform) {
+            <span class="browser-tracker__platform">{{ platformLabel(run.current_platform) }}</span>
+          }
+        </div>
+
+        <div class="browser-tracker__location">
+          <mat-icon>language</mat-icon>
+          <div>
+            <strong>{{ run.current_title || 'Portal de empleo' }}</strong>
+            <span>{{ run.current_url }}</span>
+          </div>
+        </div>
+
+        @if (recentNavigation(run); as history) {
+          @if (history.length > 1) {
+            <ol class="browser-tracker__history">
+              @for (event of history; track event.visited_at + event.url) {
+                <li>
+                  <span>{{ event.title }}</span>
+                  <small>{{ event.url }}</small>
+                </li>
+              }
+            </ol>
+          }
+        }
+      </section>
+    }
+
     <div class="metrics">
       <div><strong>{{ run.found }}</strong><span>Encontradas</span></div>
       <div><strong>{{ run.imported }}</strong><span>Importadas</span></div>

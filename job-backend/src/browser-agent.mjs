@@ -34,6 +34,8 @@ export async function runBrowserJobSearch(input, onProgress = () => {}) {
   const jobs = [];
   const warnings = [];
   let browser;
+  let currentPlatform;
+  let currentPhase = 'opening_browser';
 
   onProgress({ phase: 'opening_browser', message: 'Abriendo Microsoft Edge…', progress: 5 });
 
@@ -50,10 +52,16 @@ export async function runBrowserJobSearch(input, onProgress = () => {}) {
     });
     const page = await context.newPage();
     page.setDefaultTimeout(12_000);
+    trackNavigation(context, onProgress, () => ({
+      phase: currentPhase,
+      platform: currentPlatform,
+    }));
 
     for (let index = 0; index < platforms.length && jobs.length < limit; index += 1) {
       const platformId = platforms[index];
       const target = SEARCH_TARGETS[platformId];
+      currentPlatform = platformId;
+      currentPhase = 'browsing';
       const progress = 10 + Math.round((index / platforms.length) * 75);
       onProgress({
         phase: 'browsing',
@@ -67,6 +75,10 @@ export async function runBrowserJobSearch(input, onProgress = () => {}) {
         await page.goto(target.buildUrl({ query, location }), {
           waitUntil: 'domcontentloaded',
           timeout: 25_000,
+        });
+        await reportNavigation(page, onProgress, {
+          phase: currentPhase,
+          platform: platformId,
         });
         await dismissConsent(page);
         await humanBrowse(page);
@@ -84,6 +96,7 @@ export async function runBrowserJobSearch(input, onProgress = () => {}) {
       }
     }
 
+    currentPhase = 'importing';
     onProgress({
       phase: 'importing',
       message: `Importando ${jobs.length} ofertas encontradas…`,
@@ -95,6 +108,54 @@ export async function runBrowserJobSearch(input, onProgress = () => {}) {
   } finally {
     if (browser) await browser.close().catch(() => undefined);
   }
+}
+
+function trackNavigation(context, onProgress, getMeta) {
+  const trackedPages = new WeakSet();
+  const attach = (page) => {
+    if (trackedPages.has(page)) return;
+    trackedPages.add(page);
+    page.on('framenavigated', (frame) => {
+      if (frame !== page.mainFrame()) return;
+      void reportNavigation(page, onProgress, getMeta());
+    });
+    void reportNavigation(page, onProgress, getMeta());
+  };
+
+  context.pages().forEach(attach);
+  context.on('page', attach);
+}
+
+async function reportNavigation(page, onProgress, meta) {
+  const url = safeBrowserUrl(page.url());
+  if (!url) return;
+  const title = cleanText(await page.title().catch(() => ''), 160);
+  const event = {
+    url,
+    title: title || browserHost(url),
+    phase: meta.phase,
+    platform: meta.platform,
+    visited_at: new Date().toISOString(),
+  };
+  onProgress({
+    current_url: event.url,
+    current_title: event.title,
+    navigation_event: event,
+  });
+}
+
+function safeBrowserUrl(value) {
+  try {
+    const url = new URL(String(value ?? ''));
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return `${url.hostname}${url.pathname}`.replace(/\/$/, '').slice(0, 260) || url.hostname;
+  } catch {
+    return '';
+  }
+}
+
+function browserHost(value) {
+  return String(value ?? '').split('/')[0] || 'Portal de empleo';
 }
 
 function normalizePlatforms(value) {

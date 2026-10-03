@@ -11,7 +11,11 @@ import { switchMap, takeWhile, timer } from 'rxjs';
 
 import { JobService } from '../jobs/job.service';
 import { JobsStore } from '../jobs/jobs.store';
-import { BrowserAgentSession, applicationPlatformLabel } from '../jobs/types';
+import {
+  BrowserAgentSession,
+  BrowserNavigationEvent,
+  applicationPlatformLabel,
+} from '../jobs/types';
 import { ProfileStore } from '../profile/profile.store';
 import { SettingsStore } from '../settings/settings.store';
 
@@ -39,6 +43,10 @@ export class YoAplicoPageComponent {
   readonly session = signal<BrowserAgentSession | null>(null);
   readonly starting = signal(false);
   readonly platformLabel = applicationPlatformLabel;
+
+  recentNavigation(session: BrowserAgentSession): BrowserNavigationEvent[] {
+    return [...(session.navigation_history ?? [])].slice(-5).reverse();
+  }
 
   start() {
     if (this.starting() || this.session()?.status === 'running') return;

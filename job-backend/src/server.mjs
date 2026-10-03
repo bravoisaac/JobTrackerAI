@@ -182,6 +182,9 @@ function publicBrowserSession(session) {
     prepared,
     warnings,
     results,
+    current_url,
+    current_title,
+    navigation_history,
     started_at,
     finished_at
   } = session;
@@ -197,6 +200,9 @@ function publicBrowserSession(session) {
     prepared,
     warnings,
     results,
+    current_url,
+    current_title,
+    navigation_history,
     started_at,
     finished_at
   };
@@ -211,6 +217,9 @@ function publicApplicationSession(session) {
     message,
     progress,
     fields_filled,
+    current_url,
+    current_title,
+    navigation_history,
     started_at,
     finished_at,
     job
@@ -223,10 +232,28 @@ function publicApplicationSession(session) {
     message,
     progress,
     fields_filled,
+    current_url,
+    current_title,
+    navigation_history,
     started_at,
     finished_at,
     job
   };
+}
+
+function updateAgentSession(session, update) {
+  const { navigation_event: navigationEvent, ...fields } = update ?? {};
+  Object.assign(session, fields);
+  if (!navigationEvent?.url) return;
+
+  const history = Array.isArray(session.navigation_history) ? session.navigation_history : [];
+  const previous = history.at(-1);
+  const isSameLocation =
+    previous?.url === navigationEvent.url && previous?.phase === navigationEvent.phase;
+
+  session.navigation_history = isSameLocation
+    ? [...history.slice(0, -1), navigationEvent].slice(-8)
+    : [...history, navigationEvent].slice(-8);
 }
 
 const asyncRoute =
@@ -280,6 +307,7 @@ app.post('/browser-agent/start', (req, res) => {
     prepared: 0,
     warnings: [],
     results: [],
+    navigation_history: [],
     started_at: new Date().toISOString()
   };
   browserAgentSessions.set(id, session);
@@ -287,7 +315,9 @@ app.post('/browser-agent/start', (req, res) => {
 
   setImmediate(async () => {
     try {
-      const search = await runBrowserJobSearch(payload, (update) => Object.assign(session, update));
+      const search = await runBrowserJobSearch(payload, (update) =>
+        updateAgentSession(session, update)
+      );
       const jobs = await loadJobs();
       const minScore = Math.max(0, Math.min(100, Number(payload.min_score ?? 70) || 70));
       const existingByLink = new Map(jobs.map((job) => [normalizeLink(job?.link), job]));
@@ -406,6 +436,7 @@ app.post(
       message: 'Preparando la postulación automática…',
       progress: 0,
       fields_filled: 0,
+      navigation_history: [],
       started_at: new Date().toISOString()
     };
     applicationAgentSessions.set(id, session);
@@ -415,7 +446,7 @@ app.post(
       try {
         const result = await runBrowserApplication(
           { job, profile },
-          (update) => Object.assign(session, update)
+          (update) => updateAgentSession(session, update)
         );
         if (!result.submitted) throw new Error('El portal no confirmó el envío.');
 

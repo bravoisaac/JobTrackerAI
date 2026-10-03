@@ -153,6 +153,143 @@ dd {
   font-weight: 800;
 }
 
+.browser-tracker {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid color-mix(in oklab, var(--jd-mint) 26%, var(--jd-mist));
+  border-radius: 18px;
+  background: color-mix(in oklab, var(--jd-mint) 5%, var(--jd-paper));
+}
+
+.browser-tracker__header,
+.browser-tracker__label,
+.browser-tracker__location {
+  display: flex;
+  align-items: center;
+}
+
+.browser-tracker__header {
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 13px;
+}
+
+.browser-tracker__label {
+  gap: 8px;
+  color: var(--jd-ink);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.live-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--jd-muted);
+}
+
+.live-dot--active {
+  background: var(--jd-mint);
+  box-shadow: 0 0 0 5px color-mix(in oklab, var(--jd-mint) 18%, transparent);
+  animation: tracker-pulse 1.8s ease-in-out infinite;
+}
+
+.browser-tracker__platform {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: var(--jd-mint);
+  background: color-mix(in oklab, var(--jd-mint) 12%, white);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.browser-tracker__location {
+  gap: 12px;
+  min-width: 0;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--jd-paper);
+}
+
+.browser-tracker__location mat-icon {
+  flex: 0 0 auto;
+  color: var(--jd-mint);
+}
+
+.browser-tracker__location div,
+.browser-tracker__location strong,
+.browser-tracker__location span {
+  display: block;
+  min-width: 0;
+}
+
+.browser-tracker__location strong,
+.browser-tracker__location span,
+.browser-tracker__history span,
+.browser-tracker__history small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-tracker__location strong {
+  color: var(--jd-ink);
+  font-size: 13px;
+}
+
+.browser-tracker__location span {
+  margin-top: 3px;
+  color: var(--jd-muted);
+  font-size: 11px;
+}
+
+.browser-tracker__history {
+  display: grid;
+  gap: 9px;
+  margin: 13px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browser-tracker__history li {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  padding-left: 20px;
+}
+
+.browser-tracker__history li::before {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--jd-cloud);
+  box-shadow: 0 0 0 1px var(--jd-mist);
+}
+
+.browser-tracker__history span {
+  color: var(--jd-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.browser-tracker__history small {
+  margin-top: 2px;
+  color: var(--jd-muted);
+  font-size: 10px;
+}
+
+@keyframes tracker-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

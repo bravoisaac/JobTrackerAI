@@ -12,7 +12,12 @@ import { map, switchMap, takeWhile, timer } from 'rxjs';
 
 import { JobService } from '../jobs/job.service';
 import { JobsStore } from '../jobs/jobs.store';
-import { ApplicationAgentSession, applicationPlatformLabel, Job } from '../jobs/types';
+import {
+  ApplicationAgentSession,
+  BrowserNavigationEvent,
+  applicationPlatformLabel,
+  Job,
+} from '../jobs/types';
 import { ProfileStore } from '../profile/profile.store';
 
 @Component({
@@ -111,6 +116,10 @@ export class ApplicationsPageComponent {
 
   isAutomationRunning(jobId: number) {
     return this.automationFor(jobId)?.status === 'running';
+  }
+
+  recentNavigation(session: ApplicationAgentSession): BrowserNavigationEvent[] {
+    return [...(session.navigation_history ?? [])].slice(-3).reverse();
   }
 
   private watchAutomation(id: string) {

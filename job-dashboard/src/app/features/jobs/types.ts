@@ -82,6 +82,14 @@ export interface DiscoverJobsResponse {
 
 export type BrowserAgentStatus = 'running' | 'completed' | 'failed';
 
+export interface BrowserNavigationEvent {
+  url: string;
+  title: string;
+  phase: string;
+  platform?: ApplicationPlatformId;
+  visited_at: string;
+}
+
 export interface BrowserAgentRequest {
   profile: CandidateProfile;
   platforms: ApplicationPlatformId[];
@@ -103,6 +111,9 @@ export interface BrowserAgentSession {
   prepared: number;
   warnings: string[];
   results: Job[];
+  current_url?: string;
+  current_title?: string;
+  navigation_history: BrowserNavigationEvent[];
   started_at: string;
   finished_at?: string;
 }
@@ -119,6 +130,9 @@ export interface ApplicationAgentSession {
   message: string;
   progress: number;
   fields_filled: number;
+  current_url?: string;
+  current_title?: string;
+  navigation_history: BrowserNavigationEvent[];
   started_at: string;
   finished_at?: string;
   job?: Job;

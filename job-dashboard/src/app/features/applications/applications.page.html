@@ -112,6 +112,26 @@
               >
                 <mat-progress-bar [value]="automation.progress" />
                 <p>{{ automation.message }}</p>
+                @if (automation.current_url) {
+                  <div class="browser-route">
+                    <div class="browser-route__current">
+                      <mat-icon>language</mat-icon>
+                      <div>
+                        <strong>{{ automation.current_title || 'Portal de empleo' }}</strong>
+                        <span>{{ automation.current_url }}</span>
+                      </div>
+                    </div>
+                    @if (recentNavigation(automation); as history) {
+                      @if (history.length > 1) {
+                        <ol>
+                          @for (event of history; track event.visited_at + event.url) {
+                            <li>{{ event.title }}</li>
+                          }
+                        </ol>
+                      }
+                    }
+                  </div>
+                }
                 @if (automation.status === 'running') {
                   <small>Mantén abierta la ventana de Edge. Si pide login, CAPTCHA o una respuesta personal, complétala allí.</small>
                 }

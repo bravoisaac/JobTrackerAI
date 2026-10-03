@@ -8,6 +8,7 @@ const CAPTCHA_TEXT = /captcha|verifica que eres humano|verify you are human|comp
 
 export async function runBrowserApplication({ job, profile }, onProgress = () => {}) {
   let browser;
+  let currentPhase = 'opening_browser';
 
   onProgress({
     phase: 'opening_browser',
@@ -23,12 +24,15 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
     });
 
     const context = await browser.newContext({ viewport: null, locale: 'es-CL' });
+    trackNavigation(context, onProgress, () => ({ phase: currentPhase }));
     let page = await context.newPage();
     page.setDefaultTimeout(8_000);
 
     await page.goto(job.link, { waitUntil: 'domcontentloaded', timeout: 30_000 });
+    await reportNavigation(page, onProgress, { phase: currentPhase });
     await dismissConsent(page);
 
+    currentPhase = 'locating_form';
     onProgress({
       phase: 'locating_form',
       message: 'Buscando el formulario de postulación…',
@@ -37,6 +41,7 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
 
     let startButton = await findAction(page, START_ACTION);
     if (!startButton) {
+      currentPhase = 'awaiting_login';
       onProgress({
         phase: 'awaiting_login',
         message: 'Inicia sesión en Edge si el portal lo solicita. Continuaré automáticamente.',
@@ -61,6 +66,7 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
       }
 
       if (await hasCaptcha(page)) {
+        currentPhase = 'awaiting_captcha';
         onProgress({
           phase: 'awaiting_captcha',
           message: 'Completa la verificación de seguridad en Edge. No intentaremos resolverla.',
@@ -76,6 +82,7 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
       fieldsFilled += filledNow;
       const missingRequired = await countMissingRequiredFields(page);
 
+      currentPhase = 'filling_form';
       onProgress({
         phase: 'filling_form',
         message: `Completando el formulario (${fieldsFilled} campos rellenados)…`,
@@ -84,6 +91,7 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
       });
 
       if (missingRequired > 0) {
+        currentPhase = 'awaiting_answers';
         onProgress({
           phase: 'awaiting_answers',
           message: `Faltan ${missingRequired} respuestas obligatorias. Complétalas en Edge y continuaré.`,
@@ -98,6 +106,7 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
 
       const submitButton = await findAction(page, SUBMIT_ACTION);
       if (submitButton) {
+        currentPhase = 'submitting';
         onProgress({
           phase: 'submitting',
           message: 'Enviando la postulación…',
@@ -120,6 +129,7 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
         continue;
       }
 
+      currentPhase = 'awaiting_answers';
       onProgress({
         phase: 'awaiting_answers',
         message: 'El portal requiere una acción que no puedo identificar. Complétala en Edge.',
@@ -134,6 +144,49 @@ export async function runBrowserApplication({ job, profile }, onProgress = () =>
     throw new Error('El portal no confirmó el envío de la postulación.');
   } finally {
     if (browser) await browser.close().catch(() => undefined);
+  }
+}
+
+function trackNavigation(context, onProgress, getMeta) {
+  const trackedPages = new WeakSet();
+  const attach = (page) => {
+    if (trackedPages.has(page)) return;
+    trackedPages.add(page);
+    page.on('framenavigated', (frame) => {
+      if (frame !== page.mainFrame()) return;
+      void reportNavigation(page, onProgress, getMeta());
+    });
+    void reportNavigation(page, onProgress, getMeta());
+  };
+
+  context.pages().forEach(attach);
+  context.on('page', attach);
+}
+
+async function reportNavigation(page, onProgress, meta) {
+  const url = safeBrowserUrl(page.url());
+  if (!url) return;
+  const title = String(await page.title().catch(() => '')).trim().slice(0, 160);
+  const event = {
+    url,
+    title: title || url.split('/')[0],
+    phase: meta.phase,
+    visited_at: new Date().toISOString(),
+  };
+  onProgress({
+    current_url: event.url,
+    current_title: event.title,
+    navigation_event: event,
+  });
+}
+
+function safeBrowserUrl(value) {
+  try {
+    const url = new URL(String(value ?? ''));
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return `${url.hostname}${url.pathname}`.replace(/\/$/, '').slice(0, 260) || url.hostname;
+  } catch {
+    return '';
   }
 }
 

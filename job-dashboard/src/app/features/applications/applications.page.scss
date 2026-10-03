@@ -200,6 +200,63 @@ mat-progress-bar.score--low {
   line-height: 1.35;
 }
 
+.browser-route {
+  display: grid;
+  gap: 8px;
+  padding: 9px;
+  border: 1px solid color-mix(in oklab, currentColor 18%, transparent);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.browser-route__current {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.browser-route__current mat-icon {
+  flex: 0 0 auto;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.browser-route__current div,
+.browser-route__current strong,
+.browser-route__current span {
+  display: block;
+  min-width: 0;
+}
+
+.browser-route__current strong,
+.browser-route__current span,
+.browser-route li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.browser-route__current strong {
+  font-size: 11px;
+}
+
+.browser-route__current span {
+  margin-top: 2px;
+  font-size: 9px;
+  opacity: 0.74;
+}
+
+.browser-route ol {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 24px;
+  font-size: 9px;
+  opacity: 0.78;
+}
+
 .automation-status--completed {
   background: color-mix(in oklab, var(--jd-mint) 10%, white);
   color: var(--jd-mint);
