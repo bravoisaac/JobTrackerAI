@@ -17,6 +17,7 @@ La aplicación centraliza oportunidades, genera material personalizado —correo
 - Generación de correo, mensaje de LinkedIn y CV ATS adaptado.
 - Selección de LinkedIn, Computrabajo y otros portales.
 - Preparación por lote según plataforma y match mínimo.
+- Agente local **Yo aplico** que busca ofertas públicas en Microsoft Edge.
 - Cola con estados `Lista para revisar` y `Enviada`.
 - Estadísticas de postulaciones por fecha.
 - Modo de demostración sin consumo de la API de OpenAI.
@@ -33,6 +34,12 @@ La aplicación centraliza oportunidades, genera material personalizado —correo
 8. Marca la postulación como enviada.
 
 > La app utiliza postulación asistida. No guarda contraseñas de portales, no resuelve CAPTCHA y no declara una postulación como enviada sin confirmación del usuario.
+
+## Guía visual de Yo aplico
+
+![Yo aplico finalizado](output/playwright/yo-aplico-03-finalizado.png)
+
+Consulta la [guía completa de Yo aplico](docs/YO_APLICO.md) para configurar el perfil, ejecutar la búsqueda en Edge, revisar la cola y elegir entre envío manual o automático.
 
 ## Capturas
 
@@ -52,16 +59,11 @@ La aplicación centraliza oportunidades, genera material personalizado —correo
 
 | Capa | Tecnología |
 | --- | --- |
-<<<<<<< HEAD
 | Frontend | Angular 21, Angular Material y SCSS |
 | Gráficos | Chart.js y ng2-charts |
 | Backend | Node.js y Express |
 | Inteligencia artificial | OpenAI API con búsqueda web |
-=======
-| Frontend | Angular 21, Angular Material, SCSS |
-| Graficos | Chart.js, ng2-charts |
-| Backend | Node.js, Express |
->>>>>>> 13f32898a933480a330d84ca10b09707938adb9e
+| Automatización de navegador | Playwright Core y Microsoft Edge |
 | Persistencia | Archivo JSON local |
 
 ## Requisitos
