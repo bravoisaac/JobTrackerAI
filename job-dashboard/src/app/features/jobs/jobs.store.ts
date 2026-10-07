@@ -26,6 +26,7 @@ type JobsState = {
 
 export type JobsVm = {
   loading: boolean;
+  error?: string;
   jobsCount: number;
   appliedCount: number;
   filteredJobs: Job[];
@@ -39,6 +40,7 @@ export class JobsStore {
   private readonly initialSettings = this.settingsStore.snapshot();
 
   private readonly state$ = new BehaviorSubject<JobsState>({ loading: false, jobs: [] });
+  private loadRequestId = 0;
 
   readonly jobs$ = this.state$.pipe(map((s) => s.jobs));
 
@@ -121,6 +123,7 @@ export class JobsStore {
 
       return {
         loading: state.loading,
+        error: state.error,
         jobsCount,
         appliedCount,
         filteredJobs,
@@ -142,15 +145,20 @@ export class JobsStore {
   }
 
   loadJobs() {
+    const requestId = ++this.loadRequestId;
     this.state$.next({ ...this.state$.value, loading: true, error: undefined });
     this.jobService.getJobs().subscribe({
-      next: (jobs) => this.state$.next({ loading: false, jobs }),
-      error: (e) =>
+      next: (jobs) => {
+        if (requestId === this.loadRequestId) this.state$.next({ loading: false, jobs });
+      },
+      error: (e) => {
+        if (requestId !== this.loadRequestId) return;
         this.state$.next({
           loading: false,
           jobs: this.state$.value.jobs,
-          error: (e as any)?.message ?? 'Error cargando trabajos',
-        }),
+          error: getErrorMessage(e),
+        });
+      },
     });
   }
 
@@ -193,6 +201,14 @@ export class JobsStore {
     if (score >= 50) return 'accent';
     return 'warn';
   }
+}
+
+function getErrorMessage(error: unknown) {
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = String(error.message).trim();
+    if (message) return message;
+  }
+  return 'No se pudieron cargar los trabajos.';
 }
 
 function buildApplicationsChart(jobs: Job[]) {

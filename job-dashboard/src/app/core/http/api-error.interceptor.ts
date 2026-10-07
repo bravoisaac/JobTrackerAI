@@ -9,7 +9,10 @@ export const apiErrorInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
-        const msg = error.error?.detail ?? error.message ?? 'Error de red';
+        const msg =
+          error.status === 0
+            ? 'No se pudo conectar con el servidor. Comprueba que el backend esté iniciado.'
+            : (error.error?.detail ?? error.message ?? 'Error de red');
         snackBar.open(String(msg), 'Cerrar', { duration: 5000 });
       } else {
         snackBar.open('Error inesperado', 'Cerrar', { duration: 5000 });

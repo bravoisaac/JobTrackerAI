@@ -70,6 +70,34 @@
   margin-right: auto;
 }
 
+.load-error {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: var(--jd-max);
+  margin: 0 auto 16px;
+  padding: 16px 18px;
+  border: 1px solid color-mix(in oklab, #c62828 30%, var(--jd-cloud));
+  border-radius: 18px;
+  background: color-mix(in oklab, #c62828 6%, var(--jd-paper));
+  color: var(--jd-ink);
+}
+
+.load-error > mat-icon {
+  color: #c62828;
+}
+
+.load-error > div {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+
+.load-error span {
+  color: var(--jd-muted);
+  font-size: 13px;
+}
+
 .job-card {
   border-radius: 22px;
   padding: 22px;

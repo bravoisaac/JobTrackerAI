@@ -2,7 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 
-import { loadJobs, nextId, saveJobs } from './store.mjs';
+import { loadJobs, nextId, updateJobs } from './store.mjs';
 import { extractJson, getModel, getOpenAIClient } from './openai.mjs';
 import {
   APPLICATION_PLATFORMS,
@@ -41,6 +41,19 @@ function isRateLimited(err) {
 
 function cleanText(value, maxLength = 4000) {
   return String(value ?? '').trim().slice(0, maxLength);
+}
+
+function boundedNumber(value, fallback, min, max) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(min, Math.min(max, parsed)) : fallback;
+}
+
+function isHttpUrl(value) {
+  try {
+    return ['http:', 'https:'].includes(new URL(String(value)).protocol);
+  } catch {
+    return false;
+  }
 }
 
 function formatCandidateProfile(profile) {
@@ -256,6 +269,11 @@ function updateAgentSession(session, update) {
     : [...history, navigationEvent].slice(-8);
 }
 
+function scheduleSessionCleanup(sessions, id) {
+  const timer = setTimeout(() => sessions.delete(id), 60 * 60 * 1000);
+  timer.unref?.();
+}
+
 const asyncRoute =
   (handler) =>
   (req, res, next) => {
@@ -318,43 +336,49 @@ app.post('/browser-agent/start', (req, res) => {
       const search = await runBrowserJobSearch(payload, (update) =>
         updateAgentSession(session, update)
       );
-      const jobs = await loadJobs();
-      const minScore = Math.max(0, Math.min(100, Number(payload.min_score ?? 70) || 70));
-      const existingByLink = new Map(jobs.map((job) => [normalizeLink(job?.link), job]));
-      const imported = [];
-      const prepared = [];
+      const minScore = boundedNumber(payload.min_score, 70, 0, 100);
+      const { imported, prepared } = await updateJobs((jobs) => {
+        const existingByLink = new Map(jobs.map((job) => [normalizeLink(job?.link), job]));
+        const imported = [];
+        const prepared = [];
 
-      for (const candidate of search.jobs) {
-        const normalizedLink = normalizeLink(candidate.link);
-        const existing = existingByLink.get(normalizedLink);
-        if (existing) {
-          if (
-            !existing.aplicado &&
-            existing.application_status !== 'ready_for_review' &&
-            Number(existing.match_score ?? 0) >= minScore
-          ) {
-            Object.assign(existing, prepareApplication(existing));
-            prepared.push(existing);
+        for (const candidate of search.jobs) {
+          const normalizedLink = normalizeLink(candidate.link);
+          if (!normalizedLink || !isHttpUrl(candidate.link)) continue;
+
+          const existing = existingByLink.get(normalizedLink);
+          if (existing) {
+            if (
+              !existing.aplicado &&
+              existing.application_status !== 'ready_for_review' &&
+              Number(existing.match_score ?? 0) >= minScore
+            ) {
+              Object.assign(existing, prepareApplication(existing));
+              prepared.push(existing);
+            }
+            continue;
           }
-          continue;
+
+          const job = {
+            ...candidate,
+            id: nextId(jobs),
+            application_platform:
+              candidate.application_platform ?? detectApplicationPlatform(candidate.link)
+          };
+          if (Number(job.match_score ?? 0) >= minScore) {
+            Object.assign(job, prepareApplication(job));
+            prepared.push(job);
+          }
+          jobs.push(job);
+          existingByLink.set(normalizedLink, job);
+          imported.push(job);
         }
 
-        const job = {
-          ...candidate,
-          id: nextId(jobs),
-          application_platform:
-            candidate.application_platform ?? detectApplicationPlatform(candidate.link)
+        return {
+          changed: imported.length > 0 || prepared.length > 0,
+          result: { imported, prepared }
         };
-        if (Number(job.match_score ?? 0) >= minScore) {
-          Object.assign(job, prepareApplication(job));
-          prepared.push(job);
-        }
-        jobs.push(job);
-        existingByLink.set(normalizedLink, job);
-        imported.push(job);
-      }
-
-      if (imported.length || prepared.length) await saveJobs(jobs);
+      });
       Object.assign(session, {
         status: 'completed',
         phase: 'completed',
@@ -378,6 +402,7 @@ app.post('/browser-agent/start', (req, res) => {
         finished_at: new Date().toISOString()
       });
     }
+    scheduleSessionCleanup(browserAgentSessions, id);
   });
 });
 
@@ -450,18 +475,19 @@ app.post(
         );
         if (!result.submitted) throw new Error('El portal no confirmó el envío.');
 
-        const latestJobs = await loadJobs();
-        const index = latestJobs.findIndex((item) => Number(item.id) === jobId);
-        if (index === -1) throw new Error('La oferta dejó de estar disponible en la app.');
+        const updatedJob = await updateJobs((jobs) => {
+          const index = jobs.findIndex((item) => Number(item.id) === jobId);
+          if (index === -1) throw new Error('La oferta dejó de estar disponible en la app.');
 
-        latestJobs[index] = {
-          ...latestJobs[index],
-          aplicado: true,
-          aplicado_at: new Date().toISOString(),
-          application_status: 'submitted',
-          application_mode: 'automatic'
-        };
-        await saveJobs(latestJobs);
+          jobs[index] = {
+            ...jobs[index],
+            aplicado: true,
+            aplicado_at: new Date().toISOString(),
+            application_status: 'submitted',
+            application_mode: 'automatic'
+          };
+          return { result: jobs[index] };
+        });
 
         Object.assign(session, {
           status: 'completed',
@@ -469,7 +495,7 @@ app.post(
           message: 'Postulación enviada y confirmada por el portal.',
           progress: 100,
           fields_filled: result.fields_filled,
-          job: latestJobs[index],
+          job: updatedJob,
           finished_at: new Date().toISOString()
         });
       } catch (error) {
@@ -481,6 +507,7 @@ app.post(
           finished_at: new Date().toISOString()
         });
       }
+      scheduleSessionCleanup(applicationAgentSessions, id);
     });
   })
 );
@@ -507,56 +534,68 @@ app.get(
 app.post(
   '/jobs',
   asyncRoute(async (req, res) => {
-  const jobs = await loadJobs();
-  const payload = req.body ?? {};
+    const payload = req.body ?? {};
+    const candidate = {
+      titulo: cleanText(payload.titulo, 240),
+      empresa: cleanText(payload.empresa, 240),
+      descripcion: cleanText(payload.descripcion, 12_000),
+      link: cleanText(payload.link, 2_000),
+      ubicacion: cleanText(payload.ubicacion, 240),
+      aplicado: Boolean(payload.aplicado ?? false),
+      match_score: boundedNumber(payload.match_score, 0, 0, 100),
+      tecnologias: Array.isArray(payload.tecnologias)
+        ? payload.tecnologias.map((item) => cleanText(item, 80)).filter(Boolean).slice(0, 30)
+        : [],
+      ia_razones: Array.isArray(payload.ia_razones)
+        ? payload.ia_razones.map((item) => cleanText(item, 400)).filter(Boolean).slice(0, 10)
+        : [],
+      application_platform: detectApplicationPlatform(payload.link)
+    };
 
-  const job = {
-    id: nextId(jobs),
-    titulo: String(payload.titulo ?? ''),
-    empresa: String(payload.empresa ?? ''),
-    descripcion: String(payload.descripcion ?? ''),
-    link: String(payload.link ?? ''),
-    ubicacion: String(payload.ubicacion ?? ''),
-    aplicado: Boolean(payload.aplicado ?? false),
-    match_score: Number(payload.match_score ?? 0),
-    tecnologias: Array.isArray(payload.tecnologias) ? payload.tecnologias.map(String) : [],
-    ia_razones: Array.isArray(payload.ia_razones) ? payload.ia_razones.map(String) : [],
-    application_platform: detectApplicationPlatform(payload.link)
-  };
+    if (!candidate.titulo || !candidate.empresa || !candidate.link) {
+      return res.status(400).json({ detail: 'titulo, empresa y link son requeridos' });
+    }
+    if (!isHttpUrl(candidate.link)) {
+      return res.status(400).json({ detail: 'link debe ser una URL HTTP o HTTPS válida' });
+    }
 
-  if (!job.titulo || !job.empresa || !job.link) {
-    return res.status(400).json({ detail: 'titulo, empresa y link son requeridos' });
-  }
+    const outcome = await updateJobs((jobs) => {
+      const incomingNorm = normalizeLink(candidate.link);
+      const existing = jobs.find((job) => normalizeLink(job?.link) === incomingNorm);
+      if (existing) return { changed: false, result: { job: existing, created: false } };
 
-  const incomingNorm = normalizeLink(job.link);
-  const existing = jobs.find((j) => normalizeLink(j?.link) === incomingNorm);
-  if (existing) {
-    // Idempotent insert: if the link already exists, return the existing job.
-    return res.status(200).json(existing);
-  }
+      const job = { id: nextId(jobs), ...candidate };
+      jobs.push(job);
+      return { result: { job, created: true } };
+    });
 
-  jobs.push(job);
-  await saveJobs(jobs);
-  res.status(201).json(job);
+    res.status(outcome.created ? 201 : 200).json(outcome.job);
   })
 );
 
 app.put(
   '/jobs/:id/apply',
   asyncRoute(async (req, res) => {
-  const id = Number(req.params.id);
-  const jobs = await loadJobs();
-  const idx = jobs.findIndex((j) => Number(j.id) === id);
-  if (idx === -1) return res.status(404).json({ detail: 'Job no encontrado' });
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ detail: 'Identificador de trabajo inválido' });
+    }
 
-  jobs[idx] = {
-    ...jobs[idx],
-    aplicado: true,
-    aplicado_at: new Date().toISOString(),
-    application_status: 'submitted'
-  };
-  await saveJobs(jobs);
-  res.json(jobs[idx]);
+    const updatedJob = await updateJobs((jobs) => {
+      const index = jobs.findIndex((job) => Number(job.id) === id);
+      if (index === -1) return { changed: false, result: null };
+
+      jobs[index] = {
+        ...jobs[index],
+        aplicado: true,
+        aplicado_at: new Date().toISOString(),
+        application_status: 'submitted'
+      };
+      return { result: jobs[index] };
+    });
+
+    if (!updatedJob) return res.status(404).json({ detail: 'Job no encontrado' });
+    res.json(updatedJob);
   })
 );
 
@@ -581,23 +620,22 @@ app.post(
     return res.status(400).json({ detail: 'Selecciona al menos una plataforma.' });
   }
 
-  const minScore = Math.max(0, Math.min(100, Number(payload.min_score ?? 0) || 0));
-  const maxItems = Math.max(1, Math.min(25, Number(payload.limit ?? 10) || 10));
+  const minScore = boundedNumber(payload.min_score, 0, 0, 100);
+  const maxItems = Math.round(boundedNumber(payload.limit, 10, 1, 25));
   const selected = new Set(requestedPlatforms);
-  const jobs = await loadJobs();
-  const prepared = [];
+  const prepared = await updateJobs((jobs) => {
+    const prepared = [];
+    for (let index = 0; index < jobs.length && prepared.length < maxItems; index += 1) {
+      const job = jobs[index];
+      const platformId = detectApplicationPlatform(job?.link);
+      if (job?.aplicado || job?.application_status === 'ready_for_review') continue;
+      if (!selected.has(platformId) || Number(job?.match_score ?? 0) < minScore) continue;
 
-  for (let index = 0; index < jobs.length && prepared.length < maxItems; index += 1) {
-    const job = jobs[index];
-    const platformId = detectApplicationPlatform(job?.link);
-    if (job?.aplicado || job?.application_status === 'ready_for_review') continue;
-    if (!selected.has(platformId) || Number(job?.match_score ?? 0) < minScore) continue;
-
-    jobs[index] = { ...job, ...prepareApplication(job), application_platform: platformId };
-    prepared.push(jobs[index]);
-  }
-
-  if (prepared.length) await saveJobs(jobs);
+      jobs[index] = { ...job, ...prepareApplication(job), application_platform: platformId };
+      prepared.push(jobs[index]);
+    }
+    return { changed: prepared.length > 0, result: prepared };
+  });
   res.json({
     prepared,
     total: prepared.length,
@@ -719,7 +757,7 @@ app.post(
 
   const tech = Array.isArray(technologies) ? technologies.map(String) : [];
   const loc = String(location ?? '').trim();
-  const lim = Math.max(1, Math.min(Number(limit ?? 10), 50));
+  const lim = Math.round(boundedNumber(limit, 10, 1, 50));
 
   const prompt = [
     'Encuentra ofertas de trabajo reales en la web usando búsqueda.',
@@ -758,9 +796,9 @@ app.post(
     const seen = new Set();
     const unique = [];
     for (const j of jobs) {
-      const link = String(j.link ?? '');
+      const link = cleanText(j.link, 2_000);
       const norm = normalizeLink(link);
-      if (!norm || seen.has(norm)) continue;
+      if (!norm || !isHttpUrl(link) || seen.has(norm)) continue;
       seen.add(norm);
       unique.push(j);
       if (unique.length >= lim) break;
@@ -768,14 +806,18 @@ app.post(
 
     res.json({
       jobs: unique.map((j) => ({
-        titulo: String(j.titulo ?? ''),
-        empresa: String(j.empresa ?? ''),
-        link: String(j.link ?? ''),
-        ubicacion: String(j.ubicacion ?? ''),
-        descripcion: String(j.descripcion ?? ''),
-        match_score: Number(j.match_score ?? 0),
-        tecnologias: Array.isArray(j.tecnologias) ? j.tecnologias.map(String) : [],
-        ia_razones: Array.isArray(j.ia_razones) ? j.ia_razones.map(String) : []
+        titulo: cleanText(j.titulo, 240),
+        empresa: cleanText(j.empresa, 240),
+        link: cleanText(j.link, 2_000),
+        ubicacion: cleanText(j.ubicacion, 240),
+        descripcion: cleanText(j.descripcion, 12_000),
+        match_score: boundedNumber(j.match_score, 0, 0, 100),
+        tecnologias: Array.isArray(j.tecnologias)
+          ? j.tecnologias.map((item) => cleanText(item, 80)).filter(Boolean).slice(0, 30)
+          : [],
+        ia_razones: Array.isArray(j.ia_razones)
+          ? j.ia_razones.map((item) => cleanText(item, 400)).filter(Boolean).slice(0, 10)
+          : []
       }))
     });
   } catch (err) {
@@ -810,8 +852,13 @@ app.post(
 
 // Error handler
 app.use((err, req, res, next) => {
-  const status = Number(err?.status) || 500;
-  res.status(status).json({ detail: err?.message ?? 'Internal server error' });
+  const requestedStatus = Number(err?.status);
+  const status = Number.isInteger(requestedStatus) && requestedStatus >= 400 && requestedStatus < 600
+    ? requestedStatus
+    : 500;
+  if (status >= 500) console.error('[job-backend] request failed', err);
+  const detail = status >= 500 ? 'Ocurrió un error interno. Intenta nuevamente.' : err?.message;
+  res.status(status).json({ detail: detail || 'La solicitud no pudo completarse.' });
 });
 
 const port = Number(process.env.PORT || 8000);

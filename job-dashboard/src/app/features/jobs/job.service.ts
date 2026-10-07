@@ -93,7 +93,10 @@ export class JobService {
 
   private toApiError(err: unknown) {
     if (err instanceof HttpErrorResponse) {
-      const message = err.error?.detail ?? err.message ?? 'Error de red';
+      const message =
+        err.status === 0
+          ? 'No se pudo conectar con el servidor. Comprueba que el backend esté iniciado.'
+          : (err.error?.detail ?? err.message ?? 'Error de red');
       const apiErr: ApiError = { status: err.status, message: String(message), details: err.error };
       return throwError(() => apiErr);
     }

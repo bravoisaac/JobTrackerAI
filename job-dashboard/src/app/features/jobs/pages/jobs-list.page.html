@@ -92,6 +92,17 @@
       }
     </div>
   } @else {
+    @if (vm.error) {
+      <mat-card class="load-error" role="alert">
+        <mat-icon>cloud_off</mat-icon>
+        <div>
+          <strong>No pudimos actualizar los trabajos</strong>
+          <span>{{ vm.error }}</span>
+        </div>
+        <button mat-stroked-button (click)="jobsStore.loadJobs()">Reintentar</button>
+      </mat-card>
+    }
+
     <div class="cards">
       @for (job of vm.filteredJobs; track job.id) {
         <mat-card class="job-card">
@@ -145,7 +156,7 @@
         </mat-card>
       }
 
-      @if (vm.filteredJobs.length === 0) {
+      @if (vm.filteredJobs.length === 0 && !vm.error) {
         <div class="empty">
           <mat-icon>search_off</mat-icon>
           <div>No hay trabajos con los filtros actuales.</div>
