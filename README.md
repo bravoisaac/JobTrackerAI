@@ -1,12 +1,27 @@
 # Postular App
 
-Aplicación web para descubrir ofertas laborales, medir su compatibilidad con el perfil del candidato y organizar postulaciones con apoyo de inteligencia artificial.
+Aplicación web local para descubrir ofertas laborales, medir su compatibilidad con el perfil del candidato y gestionar postulaciones con apoyo de inteligencia artificial.
 
-La aplicación centraliza oportunidades, genera material personalizado —correo, mensaje de LinkedIn y CV adaptado— y prepara una cola de postulaciones para LinkedIn, Computrabajo y otros portales.
+Postular App reúne en un solo flujo la búsqueda de oportunidades, la preparación de correos, mensajes de LinkedIn y CV adaptados, y el seguimiento de cada postulación. Está pensada para mantener a la persona en control: permite revisar la información antes de enviarla y no almacena credenciales de portales de empleo.
 
 ![Dashboard principal](docs/images/dashboard.png)
 
-## Características
+## Contenido
+
+- [Funciones principales](#funciones-principales)
+- [Cómo funciona](#cómo-funciona)
+- [Arquitectura](#arquitectura)
+- [Requisitos](#requisitos)
+- [Inicio rápido](#inicio-rápido)
+- [Configuración](#configuración)
+- [Modo de demostración](#modo-de-demostración)
+- [API](#api)
+- [Estructura del proyecto](#estructura-del-proyecto)
+- [Scripts y pruebas](#scripts-y-pruebas)
+- [Seguridad y limitaciones](#seguridad-y-limitaciones)
+- [Solución de problemas](#solución-de-problemas)
+
+## Funciones principales
 
 - Dashboard con indicadores de oportunidades y postulaciones.
 - Descubrimiento de ofertas mediante IA y búsqueda web.
@@ -17,12 +32,13 @@ La aplicación centraliza oportunidades, genera material personalizado —correo
 - Generación de correo, mensaje de LinkedIn y CV ATS adaptado.
 - Selección de LinkedIn, Computrabajo y otros portales.
 - Preparación por lote según plataforma y match mínimo.
-- Agente local **Yo aplico** que busca ofertas públicas en Microsoft Edge.
+- Agente local **Yo aplico** que busca e importa ofertas públicas desde Microsoft Edge.
+- Flujo de postulación manual o automática para formularios compatibles.
 - Cola con estados `Lista para revisar` y `Enviada`.
 - Estadísticas de postulaciones por fecha.
-- Modo de demostración sin consumo de la API de OpenAI.
+- Fallback de demostración cuando la API de OpenAI no está disponible.
 
-## Flujo de uso
+## Cómo funciona
 
 1. Completa tu información en **Perfil**.
 2. Configura las plataformas y el match mínimo en **Configuración**.
@@ -30,10 +46,10 @@ La aplicación centraliza oportunidades, genera material personalizado —correo
 4. Presiona **Preparar seleccionadas** para crear la cola.
 5. En **Postulaciones**, revisa cada oportunidad preparada.
 6. Genera y edita el correo, mensaje y CV.
-7. Abre el portal, completa las preguntas particulares y confirma el envío.
-8. Marca la postulación como enviada.
+7. Continúa manualmente en el portal o inicia la postulación automática.
+8. Confirma el resultado y consulta el avance en **Estadísticas**.
 
-> La app utiliza postulación asistida. No guarda contraseñas de portales, no resuelve CAPTCHA y no declara una postulación como enviada sin confirmación del usuario.
+> **Importante:** **Yo aplico** solo busca e importa ofertas. La postulación automática se inicia por separado desde **Postulaciones** y puede pulsar el envío final únicamente cuando reconoce un formulario compatible. Los inicios de sesión, CAPTCHA y preguntas personales requieren intervención del usuario.
 
 ## Guía visual de Yo aplico
 
@@ -55,39 +71,44 @@ Consulta la [guía completa de Yo aplico](docs/YO_APLICO.md) para configurar el 
 
 ![Estadísticas](docs/images/stats.png)
 
-## Tecnologías
+## Arquitectura
 
-| Capa | Tecnología |
-| --- | --- |
-| Frontend | Angular 21, Angular Material y SCSS |
-| Gráficos | Chart.js y ng2-charts |
-| Backend | Node.js y Express |
-| Inteligencia artificial | OpenAI API con búsqueda web |
-| Automatización de navegador | Playwright Core y Microsoft Edge |
-| Persistencia | Archivo JSON local |
+```mermaid
+flowchart LR
+    UI[Angular 21<br/>localhost:4200] -->|HTTP JSON| API[Express<br/>localhost:8000]
+    API --> DATA[(data/jobs.json)]
+    API -->|Responses API| OPENAI[OpenAI<br/>generación y búsqueda web]
+    API -->|Playwright Core| EDGE[Microsoft Edge<br/>agentes locales]
+    UI --> LOCAL[(localStorage<br/>perfil y preferencias)]
+```
+
+| Capa | Tecnología | Responsabilidad |
+| --- | --- | --- |
+| Frontend | Angular 21, Angular Material y SCSS | Interfaz, navegación y estado local |
+| Gráficos | Chart.js y ng2-charts | Estadísticas de postulaciones |
+| Backend | Node.js y Express | API, validación y coordinación de agentes |
+| Inteligencia artificial | OpenAI Responses API | Generación de contenido y búsqueda web |
+| Automatización | Playwright Core y Microsoft Edge | Búsqueda e interacción con portales |
+| Persistencia | JSON local y `localStorage` | Ofertas, estados, perfil y preferencias |
 
 ## Requisitos
 
 - Node.js 20 o superior.
 - npm.
-- Una `OPENAI_API_KEY` con crédito disponible para utilizar las funciones reales de IA.
+- Microsoft Edge instalado para utilizar **Yo aplico** y la postulación automática.
+- Una `OPENAI_API_KEY` con cuota disponible para utilizar las funciones reales de IA.
 
 También puedes ejecutar el proyecto sin una API key válida utilizando el modo de demostración.
 
-## Instalación
+## Inicio rápido
 
-Clona el repositorio y entra en la carpeta del proyecto:
-
-```powershell
-git clone <URL_DEL_REPOSITORIO>
-cd Postular_app
-```
+Los ejemplos están escritos para PowerShell en Windows. Ejecuta cada bloque desde la raíz del repositorio.
 
 ### Backend
 
 ```powershell
 cd job-backend
-npm.cmd install
+npm.cmd ci
 Copy-Item .env.example .env
 ```
 
@@ -98,6 +119,8 @@ OPENAI_API_KEY=tu_api_key
 PORT=8000
 MOCK_ON_QUOTA=1
 ```
+
+`OPENAI_API_KEY` es necesaria para usar IA real. Si solo quieres probar la aplicación, puedes dejar la key sin configurar y activar `MOCK_ON_QUOTA=1`.
 
 Inicia el servidor:
 
@@ -117,7 +140,7 @@ Abre otra terminal:
 
 ```powershell
 cd job-dashboard
-npm.cmd install
+npm.cmd ci
 npm.cmd start
 ```
 
@@ -125,7 +148,19 @@ La aplicación estará disponible en [http://localhost:4200](http://localhost:42
 
 El frontend consume por defecto `http://localhost:8000`. Si modificas el puerto del backend, actualiza `job-dashboard/src/app/core/config/api-base-url.ts`.
 
-## Configuración de postulaciones
+## Configuración
+
+### Variables de entorno del backend
+
+| Variable | Obligatoria | Valor predeterminado | Uso |
+| --- | --- | --- | --- |
+| `OPENAI_API_KEY` | Solo para IA real | — | Credencial de OpenAI; debe permanecer en el backend |
+| `OPENAI_MODEL` | No | `gpt-4.1-mini` | Modelo usado para descubrir ofertas y generar contenido |
+| `PORT` | No | `8000` | Puerto HTTP del backend |
+| `MOCK_ON_QUOTA` | No | Desactivado | Activa la demo si falta la key, no hay cuota o se alcanza el rate limit |
+| `JOB_DATA_PATH` | No | `job-backend/data/jobs.json` | Ruta alternativa para el archivo de persistencia |
+
+### Preferencias de postulación
 
 En la pantalla **Configuración** puedes definir:
 
@@ -136,6 +171,8 @@ En la pantalla **Configuración** puedes definir:
 
 El botón **Preparar seleccionadas** procesa hasta 10 ofertas no postuladas que cumplan las preferencias. El backend detecta la plataforma a partir del dominio y guarda el estado `ready_for_review`.
 
+El perfil y las preferencias se guardan en el `localStorage` del navegador. Las ofertas y sus estados se almacenan en `job-backend/data/jobs.json`.
+
 ## Modo de demostración
 
 Configura la siguiente variable cuando no tengas crédito disponible en OpenAI:
@@ -144,7 +181,7 @@ Configura la siguiente variable cuando no tengas crédito disponible en OpenAI:
 MOCK_ON_QUOTA=1
 ```
 
-En este modo:
+Cuando la API key falta, no tiene cuota o alcanza un límite de solicitudes:
 
 - `/discover` entrega oportunidades simuladas con enlaces de búsqueda.
 - `/generate` crea un correo, mensaje y CV de ejemplo usando el perfil local.
@@ -155,13 +192,17 @@ En este modo:
 | Método | Ruta | Descripción |
 | --- | --- | --- |
 | `GET` | `/health` | Comprueba el estado del backend |
+| `GET` | `/application-platforms` | Lista las plataformas compatibles |
 | `GET` | `/jobs` | Obtiene las ofertas guardadas |
-| `POST` | `/jobs` | Importa una oferta |
+| `POST` | `/jobs` | Importa una oferta y evita duplicados por URL |
 | `PUT` | `/jobs/:id/apply` | Marca una postulación como enviada |
-| `GET` | `/application-platforms` | Obtiene las plataformas disponibles |
 | `POST` | `/applications/prepare-batch` | Prepara ofertas según plataforma y score |
 | `POST` | `/generate` | Genera correo, mensaje y CV con IA |
 | `POST` | `/discover` | Descubre ofertas mediante IA y búsqueda web |
+| `POST` | `/browser-agent/start` | Inicia una búsqueda local con **Yo aplico** |
+| `GET` | `/browser-agent/status/:id` | Consulta el avance de **Yo aplico** |
+| `POST` | `/applications/:id/auto-apply` | Inicia una postulación automática |
+| `GET` | `/application-agent/status/:id` | Consulta el avance de la postulación automática |
 
 Ejemplo para preparar una cola:
 
@@ -181,45 +222,62 @@ Ejemplo para preparar una cola:
 
 ```text
 Postular_app/
-|-- job-backend/
-|   |-- data/
-|   |   `-- jobs.json
-|   |-- src/
-|   |   |-- application-platforms.mjs
-|   |   |-- openai.mjs
-|   |   |-- server.mjs
-|   |   `-- store.mjs
-|   `-- package.json
-|-- job-dashboard/
-|   |-- src/
-|   |   `-- app/
-|   |       |-- core/
-|   |       `-- features/
-|   `-- package.json
-|-- docs/
-|   `-- images/
-`-- README.md
+├── job-backend/
+│   ├── data/                   # Persistencia JSON local
+│   ├── src/
+│   │   ├── application-agent.mjs
+│   │   ├── application-platforms.mjs
+│   │   ├── browser-agent.mjs
+│   │   ├── openai.mjs
+│   │   ├── server.mjs
+│   │   └── store.mjs
+│   ├── test/
+│   └── package.json
+├── job-dashboard/
+│   ├── public/
+│   ├── src/app/
+│   │   ├── core/               # Configuración, HTTP y layout
+│   │   └── features/           # Pantallas por dominio
+│   └── package.json
+├── docs/
+│   ├── images/
+│   └── YO_APLICO.md
+└── README.md
 ```
 
-## Comandos útiles
+## Scripts y pruebas
+
+### Backend
+
+Ejecuta estos comandos desde `job-backend`:
+
+| Comando | Descripción |
+| --- | --- |
+| `npm.cmd run dev` | Inicia el servidor |
+| `npm.cmd run dev:watch` | Inicia el servidor con recarga automática |
+| `npm.cmd start` | Inicia el servidor sin modo watch |
+| `npm.cmd test` | Ejecuta las pruebas con el test runner de Node.js |
+
+### Frontend
+
+Ejecuta estos comandos desde `job-dashboard`:
+
+| Comando | Descripción |
+| --- | --- |
+| `npm.cmd start` | Inicia el servidor de desarrollo |
+| `npm.cmd run build` | Genera el build de producción |
+| `npm.cmd run watch` | Compila en modo desarrollo y observa cambios |
+| `npm.cmd test` | Ejecuta las pruebas con Vitest |
+
+Validación recomendada antes de integrar cambios:
 
 ```powershell
-# Backend
 cd job-backend
-npm.cmd run dev
-
-# Backend con recarga automática
-npm.cmd run dev:watch
-
-# Frontend
-cd job-dashboard
-npm.cmd start
-
-# Build de producción
-npm.cmd run build
-
-# Pruebas del frontend
 npm.cmd test
+
+cd ..\job-dashboard
+npm.cmd test -- --watch=false
+npm.cmd run build
 ```
 
 ## Seguridad y limitaciones
@@ -228,10 +286,14 @@ npm.cmd test
 - No publiques archivos `.env` ni claves privadas.
 - El perfil se guarda localmente en el navegador.
 - Las ofertas y estados se almacenan en `job-backend/data/jobs.json`.
-- LinkedIn y Computrabajo requieren revisión y envío final desde la sesión del usuario.
-- Una automatización completa solo debe implementarse mediante APIs oficiales o integraciones expresamente autorizadas por cada plataforma.
+- La aplicación no almacena contraseñas de LinkedIn, Computrabajo u otros portales.
+- Los inicios de sesión, CAPTCHA, pretensión salarial y preguntas personales deben resolverse en la ventana del navegador.
+- **Yo aplico** no envía postulaciones: solo busca e importa oportunidades.
+- La postulación automática requiere una acción explícita y solo funciona con formularios reconocidos por el agente.
+- Antes de enviar datos, revisa la oferta, el material generado y las condiciones del portal.
+- Usa automatización únicamente donde los términos del portal y la normativa aplicable lo permitan.
 
-## Problemas comunes
+## Solución de problemas
 
 ### `net::ERR_CONNECTION_REFUSED :8000`
 
@@ -255,6 +317,14 @@ Comprueba que:
 - La plataforma esté seleccionada.
 - El score de la oferta sea igual o superior al mínimo configurado.
 
+### Edge no se abre o aparece `ERR_NETWORK_ACCESS_DENIED`
+
+Verifica que Microsoft Edge esté instalado e inicia el backend desde una terminal local con permiso para abrir aplicaciones y acceder a Internet. Luego recarga el frontend.
+
 ### Error `chrome-extension://`
 
 Generalmente proviene de una extensión instalada en el navegador. Prueba en modo incógnito o desactiva temporalmente las extensiones.
+
+### `node --watch` falla con `spawn EPERM`
+
+Usa `npm.cmd run dev`, que inicia el backend sin observación automática de archivos.
