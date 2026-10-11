@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,37 +19,48 @@ import { CandidateProfile, ProfileStore } from './profile.store';
     MatCardModule,
     MatFormFieldModule,
     MatIconModule,
-    MatInputModule
+    MatInputModule,
   ],
   templateUrl: './profile.page.html',
-  styleUrl: './profile.page.scss'
+  styleUrl: './profile.page.scss',
 })
 export class ProfilePageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly snackBar = inject(MatSnackBar);
   readonly profileStore = inject(ProfileStore);
+  private readonly initialProfile = this.profileStore.snapshot();
 
   readonly form = this.fb.nonNullable.group({
-    fullName: this.profileStore.snapshot().fullName,
-    email: this.profileStore.snapshot().email,
-    phone: this.profileStore.snapshot().phone,
-    location: this.profileStore.snapshot().location,
-    linkedin: this.profileStore.snapshot().linkedin,
-    portfolio: this.profileStore.snapshot().portfolio,
-    summary: this.profileStore.snapshot().summary,
-    targetRoles: this.profileStore.snapshot().targetRoles,
-    skills: this.profileStore.snapshot().skills,
-    experience: this.profileStore.snapshot().experience,
-    education: this.profileStore.snapshot().education,
-    languages: this.profileStore.snapshot().languages,
-    cvFileName: this.profileStore.snapshot().cvFileName,
-    cvText: this.profileStore.snapshot().cvText
+    fullName: [this.initialProfile.fullName, [Validators.required, Validators.maxLength(160)]],
+    email: [
+      this.initialProfile.email,
+      [Validators.required, Validators.email, Validators.maxLength(320)],
+    ],
+    phone: [this.initialProfile.phone, [Validators.maxLength(80)]],
+    location: [this.initialProfile.location, [Validators.maxLength(240)]],
+    linkedin: [this.initialProfile.linkedin, [Validators.maxLength(500)]],
+    portfolio: [this.initialProfile.portfolio, [Validators.maxLength(500)]],
+    summary: [this.initialProfile.summary, [Validators.maxLength(4000)]],
+    targetRoles: [this.initialProfile.targetRoles, [Validators.maxLength(1000)]],
+    skills: [this.initialProfile.skills, [Validators.maxLength(4000)]],
+    experience: [this.initialProfile.experience, [Validators.maxLength(12_000)]],
+    education: [this.initialProfile.education, [Validators.maxLength(4000)]],
+    languages: [this.initialProfile.languages, [Validators.maxLength(1000)]],
+    cvFileName: [this.initialProfile.cvFileName, [Validators.maxLength(260)]],
+    cvText: [this.initialProfile.cvText, [Validators.maxLength(24_000)]],
   });
 
   save() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      this.snackBar.open('Revisa el nombre y escribe un email válido.', 'Cerrar', {
+        duration: 3500,
+      });
+      return;
+    }
     this.profileStore.save(this.form.getRawValue() as CandidateProfile);
     this.snackBar.open('Perfil guardado para generar postulaciones IA', 'Cerrar', {
-      duration: 2800
+      duration: 2800,
     });
   }
 
@@ -64,6 +75,12 @@ export class ProfilePageComponent {
     const file = input.files?.[0];
     if (!file) return;
 
+    if (file.size > 5 * 1024 * 1024) {
+      this.snackBar.open('El CV no puede superar 5 MB.', 'Cerrar', { duration: 3500 });
+      input.value = '';
+      return;
+    }
+
     this.form.controls.cvFileName.setValue(file.name);
 
     const lowerName = file.name.toLowerCase();
@@ -77,7 +94,7 @@ export class ProfilePageComponent {
       this.snackBar.open(
         'CV adjuntado. Para PDF/DOCX pega el texto del CV en el campo inferior.',
         'Cerrar',
-        { duration: 4500 }
+        { duration: 4500 },
       );
       input.value = '';
       return;

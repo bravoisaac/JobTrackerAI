@@ -11,6 +11,8 @@ import { MatToolbarModule } from '@angular/material/toolbar';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter, map, startWith } from 'rxjs';
 
+import { ProfileStore } from '../../features/profile/profile.store';
+
 type NavItem = { label: string; icon: string; to: string };
 
 @Component({
@@ -25,14 +27,15 @@ type NavItem = { label: string; icon: string; to: string };
     MatButtonModule,
     MatListModule,
     MatDividerModule,
-    MatMenuModule
+    MatMenuModule,
   ],
   templateUrl: './main-layout.component.html',
-  styleUrl: './main-layout.component.scss'
+  styleUrl: './main-layout.component.scss',
 })
 export class MainLayoutComponent {
   private readonly breakpointObserver = inject(BreakpointObserver);
   private readonly router = inject(Router);
+  readonly profileStore = inject(ProfileStore);
 
   readonly nav: NavItem[] = [
     { label: 'Dashboard', icon: 'dashboard', to: '/dashboard' },
@@ -41,21 +44,21 @@ export class MainLayoutComponent {
     { label: 'Postulaciones', icon: 'send', to: '/applications' },
     { label: 'Perfil', icon: 'person', to: '/profile' },
     { label: 'Configuración', icon: 'settings', to: '/settings' },
-    { label: 'Estadísticas', icon: 'bar_chart', to: '/stats' }
+    { label: 'Estadísticas', icon: 'bar_chart', to: '/stats' },
   ];
 
   readonly isHandset = toSignal(
     this.breakpointObserver.observe(Breakpoints.Handset).pipe(map((state) => state.matches)),
-    { initialValue: false }
+    { initialValue: false },
   );
 
   readonly pageTitle = toSignal(
     this.router.events.pipe(
       filter((event) => event instanceof NavigationEnd),
       startWith(null),
-      map(() => this.nav.find((item) => this.router.url.startsWith(item.to))?.label ?? 'Dashboard')
+      map(() => this.nav.find((item) => this.router.url.startsWith(item.to))?.label ?? 'Dashboard'),
     ),
-    { initialValue: 'Dashboard' }
+    { initialValue: 'Dashboard' },
   );
 
   maybeClose(drawer: MatSidenav) {

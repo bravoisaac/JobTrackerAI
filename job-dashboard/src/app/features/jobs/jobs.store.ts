@@ -29,6 +29,7 @@ export type JobsVm = {
   error?: string;
   jobsCount: number;
   appliedCount: number;
+  successRate: number;
   filteredJobs: Job[];
   applicationsChart: { data: any; options: ChartConfiguration['options'] };
 };
@@ -126,6 +127,7 @@ export class JobsStore {
         error: state.error,
         jobsCount,
         appliedCount,
+        successRate: jobsCount ? appliedCount / jobsCount : 0,
         filteredJobs,
         applicationsChart: buildApplicationsChart(state.jobs),
       } satisfies JobsVm;

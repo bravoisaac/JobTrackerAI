@@ -2,7 +2,9 @@
   <div>
     <div class="eyebrow">Perfil IA</div>
     <h1>Datos personales y CV</h1>
-    <p>Estos datos se usan para generar correos, mensajes LinkedIn y un CV adaptado a cada oferta.</p>
+    <p>
+      Estos datos se usan para generar correos, mensajes LinkedIn y un CV adaptado a cada oferta.
+    </p>
   </div>
 
   <a mat-flat-button routerLink="/jobs">
@@ -24,32 +26,68 @@
     <div class="fields two">
       <mat-form-field appearance="outline">
         <mat-label>Nombre completo</mat-label>
-        <input matInput formControlName="fullName" placeholder="Tu nombre" />
+        <input
+          matInput
+          formControlName="fullName"
+          placeholder="Tu nombre"
+          required
+          maxlength="160"
+        />
+        @if (form.controls.fullName.touched && form.controls.fullName.hasError('required')) {
+          <mat-error>El nombre es obligatorio.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Email</mat-label>
-        <input matInput type="email" formControlName="email" placeholder="tu@email.com" />
+        <input
+          matInput
+          type="email"
+          formControlName="email"
+          placeholder="tu@email.com"
+          required
+          maxlength="320"
+        />
+        @if (form.controls.email.touched && form.controls.email.hasError('required')) {
+          <mat-error>El email es obligatorio.</mat-error>
+        } @else if (form.controls.email.touched && form.controls.email.hasError('email')) {
+          <mat-error>Escribe un email válido.</mat-error>
+        }
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Telefono</mat-label>
-        <input matInput formControlName="phone" placeholder="+56 9 ..." />
+        <input matInput formControlName="phone" placeholder="+56 9 ..." maxlength="80" />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Ubicacion</mat-label>
-        <input matInput formControlName="location" placeholder="Santiago, Chile / Remoto" />
+        <input
+          matInput
+          formControlName="location"
+          placeholder="Santiago, Chile / Remoto"
+          maxlength="240"
+        />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>LinkedIn</mat-label>
-        <input matInput formControlName="linkedin" placeholder="https://linkedin.com/in/..." />
+        <input
+          matInput
+          formControlName="linkedin"
+          placeholder="https://linkedin.com/in/..."
+          maxlength="500"
+        />
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Portafolio / GitHub</mat-label>
-        <input matInput formControlName="portfolio" placeholder="https://github.com/..." />
+        <input
+          matInput
+          formControlName="portfolio"
+          placeholder="https://github.com/..."
+          maxlength="500"
+        />
       </mat-form-field>
     </div>
   </mat-card>
@@ -96,7 +134,12 @@
 
       <mat-form-field appearance="outline">
         <mat-label>Idiomas</mat-label>
-        <textarea matInput formControlName="languages" rows="2" placeholder="Espanol nativo, Ingles basico/intermedio..."></textarea>
+        <textarea
+          matInput
+          formControlName="languages"
+          rows="2"
+          placeholder="Espanol nativo, Ingles basico/intermedio..."
+        ></textarea>
       </mat-form-field>
     </div>
   </mat-card>
@@ -122,18 +165,28 @@
         <mat-icon>upload_file</mat-icon>
         Adjuntar CV
       </button>
-      <span>{{ form.controls.cvFileName.value || 'Sin archivo adjunto' }}</span>
+      <span>{{ form.controls.cvFileName.value || 'Sin archivo adjunto' }} · máximo 5 MB</span>
     </div>
 
     <div class="fields two">
       <mat-form-field appearance="outline">
         <mat-label>Experiencia</mat-label>
-        <textarea matInput formControlName="experience" rows="8" placeholder="Proyectos, practicas, experiencia laboral, logros medibles..."></textarea>
+        <textarea
+          matInput
+          formControlName="experience"
+          rows="8"
+          placeholder="Proyectos, practicas, experiencia laboral, logros medibles..."
+        ></textarea>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
         <mat-label>Educacion y certificaciones</mat-label>
-        <textarea matInput formControlName="education" rows="8" placeholder="Carrera, cursos, certificaciones, bootcamps..."></textarea>
+        <textarea
+          matInput
+          formControlName="education"
+          rows="8"
+          placeholder="Carrera, cursos, certificaciones, bootcamps..."
+        ></textarea>
       </mat-form-field>
     </div>
 

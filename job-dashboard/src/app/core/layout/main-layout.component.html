@@ -32,13 +32,23 @@
 
     <div class="sidebar-card">
       <div class="sidebar-card__icon">
-        <mat-icon>auto_awesome</mat-icon>
+        <mat-icon>{{ profileStore.hasPersonalData() ? 'verified' : 'auto_awesome' }}</mat-icon>
       </div>
       <div>
-        <strong>IA preparada</strong>
-        <span>Completa tu perfil para mejores postulaciones.</span>
+        <strong>{{
+          profileStore.hasPersonalData() ? 'Perfil preparado' : 'Completa tu perfil'
+        }}</strong>
+        <span>
+          {{
+            profileStore.hasPersonalData()
+              ? 'Tus datos están listos para personalizar postulaciones.'
+              : 'Agrega nombre y email para usar todos los flujos.'
+          }}
+        </span>
       </div>
-      <a mat-button routerLink="/profile" (click)="maybeClose(drawer)">Configurar</a>
+      <a mat-button routerLink="/profile" (click)="maybeClose(drawer)">
+        {{ profileStore.hasPersonalData() ? 'Editar perfil' : 'Configurar' }}
+      </a>
     </div>
   </mat-sidenav>
 

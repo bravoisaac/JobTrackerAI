@@ -1,57 +1,59 @@
-<div class="page-head">
-  <div>
-    <div class="eyebrow">Pipeline personal premium</div>
-    <h1>Postulaciones con IA</h1>
-    <p>Seguimiento claro de oportunidades, postulaciones y conversiones.</p>
+@if (vm$ | async; as vm) {
+  <div class="page-head">
+    <div>
+      <div class="eyebrow">Pipeline personal premium</div>
+      <h1>Postulaciones con IA</h1>
+      <p>Seguimiento claro de oportunidades, postulaciones y conversiones.</p>
+    </div>
+
+    <a mat-flat-button routerLink="/jobs">
+      <mat-icon>work</mat-icon>
+      Ver trabajos
+    </a>
   </div>
 
-  <a mat-flat-button routerLink="/jobs">
-    <mat-icon>work</mat-icon>
-    Ver trabajos
-  </a>
-</div>
+  <div class="grid">
+    <mat-card class="kpi">
+      <div class="kpi__icon">
+        <mat-icon>work</mat-icon>
+      </div>
+      <div class="kpi__meta">
+        <div class="kpi__label">Total trabajos</div>
+        <div class="kpi__value">{{ vm.jobsCount }}</div>
+      </div>
+    </mat-card>
 
-<div class="grid">
-  <mat-card class="kpi">
-    <div class="kpi__icon">
-      <mat-icon>work</mat-icon>
-    </div>
-    <div class="kpi__meta">
-      <div class="kpi__label">Total trabajos</div>
-      <div class="kpi__value">{{ (vm$ | async)?.jobsCount ?? 0 }}</div>
-    </div>
-  </mat-card>
+    <mat-card class="kpi">
+      <div class="kpi__icon">
+        <mat-icon>send</mat-icon>
+      </div>
+      <div class="kpi__meta">
+        <div class="kpi__label">Postulaciones</div>
+        <div class="kpi__value">{{ vm.appliedCount }}</div>
+      </div>
+    </mat-card>
 
-  <mat-card class="kpi">
-    <div class="kpi__icon">
-      <mat-icon>send</mat-icon>
-    </div>
-    <div class="kpi__meta">
-      <div class="kpi__label">Postulaciones</div>
-      <div class="kpi__value">{{ (vm$ | async)?.appliedCount ?? 0 }}</div>
-    </div>
-  </mat-card>
+    <mat-card class="kpi">
+      <div class="kpi__icon">
+        <mat-icon>trending_up</mat-icon>
+      </div>
+      <div class="kpi__meta">
+        <div class="kpi__label">Tasa de avance</div>
+        <div class="kpi__value">{{ vm.successRate | percent: '1.0-0' }}</div>
+      </div>
+    </mat-card>
 
-  <mat-card class="kpi">
-    <div class="kpi__icon">
-      <mat-icon>trending_up</mat-icon>
-    </div>
-    <div class="kpi__meta">
-      <div class="kpi__label">Tasa de avance</div>
-      <div class="kpi__value">{{ successRate() | percent : '1.0-0' }}</div>
-    </div>
-  </mat-card>
-
-  <mat-card class="chart">
-    <div class="chart__header">
-      <div class="chart__title">Postulaciones por dia</div>
-      <div class="chart__hint">Actividad registrada desde tu lista de trabajos.</div>
-    </div>
-    <canvas
-      baseChart
-      [data]="(vm$ | async)?.applicationsChart?.data"
-      [options]="(vm$ | async)?.applicationsChart?.options"
-      [type]="'bar'"
-    ></canvas>
-  </mat-card>
-</div>
+    <mat-card class="chart">
+      <div class="chart__header">
+        <div class="chart__title">Postulaciones por día</div>
+        <div class="chart__hint">Actividad registrada desde tu lista de trabajos.</div>
+      </div>
+      <canvas
+        baseChart
+        [data]="vm.applicationsChart.data"
+        [options]="vm.applicationsChart.options"
+        [type]="'bar'"
+      ></canvas>
+    </mat-card>
+  </div>
+}

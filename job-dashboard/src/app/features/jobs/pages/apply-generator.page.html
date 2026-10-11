@@ -11,75 +11,134 @@
   </a>
 </div>
 
-@if (vm$ | async; as res) {
-  <mat-card class="profile-status" [class.profile-status--ok]="profileStore.hasPersonalData()">
-    <mat-icon>{{ profileStore.hasPersonalData() ? 'verified' : 'info' }}</mat-icon>
-    <div>
-      <strong>
-        {{ profileStore.hasPersonalData() ? 'Perfil usado por la IA' : 'Completa tu perfil' }}
-      </strong>
-      <p>
-        {{
-          profileStore.hasPersonalData()
-            ? 'La postulacion y el CV fueron generados con tus datos personales y CV base.'
-            : 'Agrega tus datos personales y CV para obtener mejores postulaciones.'
-        }}
-      </p>
+@if (vm$ | async; as vm) {
+  @if (vm.status === 'loading') {
+    <div class="loading" aria-live="polite">
+      <mat-spinner diameter="44"></mat-spinner>
+      <div>Generando con IA...</div>
     </div>
-  </mat-card>
-
-  <div class="grid">
-    <mat-card class="panel">
-      <div class="panel__head">
-        <div class="panel__title">Correo</div>
-        <button mat-icon-button (click)="copyCorreo()" aria-label="Copiar correo">
-          <mat-icon>content_copy</mat-icon>
-        </button>
+  } @else if (vm.status === 'error') {
+    <mat-card class="error-state" role="alert">
+      <mat-icon>error_outline</mat-icon>
+      <div>
+        <strong>No se pudo generar la postulación</strong>
+        <p>{{ vm.message }}</p>
       </div>
-      <textarea class="text" [formControl]="correoControl" rows="10"></textarea>
+      <div class="error-state__actions">
+        <button mat-flat-button type="button" (click)="retry()">
+          <mat-icon>refresh</mat-icon>
+          Reintentar
+        </button>
+        <a mat-stroked-button routerLink="/settings">Revisar configuración</a>
+      </div>
+    </mat-card>
+  } @else {
+    <mat-card class="profile-status" [class.profile-status--ok]="profileStore.hasPersonalData()">
+      <mat-icon>{{ profileStore.hasPersonalData() ? 'verified' : 'info' }}</mat-icon>
+      <div>
+        <strong>
+          {{ profileStore.hasPersonalData() ? 'Perfil usado por la IA' : 'Completa tu perfil' }}
+        </strong>
+        <p>
+          {{
+            profileStore.hasPersonalData()
+              ? 'La postulación y el CV fueron generados con tus datos personales y CV base.'
+              : 'Agrega tus datos personales y CV para obtener mejores postulaciones.'
+          }}
+        </p>
+        @if (vm.mock) {
+          <span class="demo-badge">Contenido de demostración</span>
+        }
+      </div>
     </mat-card>
 
-    <mat-card class="panel">
-      <div class="panel__head">
-        <div class="panel__title">Mensaje LinkedIn</div>
-        <button mat-icon-button (click)="copyMensaje()" aria-label="Copiar mensaje">
-          <mat-icon>content_copy</mat-icon>
-        </button>
-      </div>
-      <textarea class="text" [formControl]="mensajeControl" rows="10"></textarea>
-    </mat-card>
-
-    <mat-card class="panel panel--wide">
-      <div class="panel__head">
-        <div>
-          <div class="panel__title">CV adaptado</div>
-          <div class="hint">Version enfocada en la oferta, basada en tu perfil y CV adjunto.</div>
+    <div class="grid">
+      <mat-card class="panel">
+        <div class="panel__head">
+          <div class="panel__title">Correo</div>
+          <button
+            mat-icon-button
+            (click)="copyCorreo()"
+            [disabled]="!correoControl.value"
+            aria-label="Copiar correo"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
         </div>
-        <button mat-icon-button (click)="copyCv()" aria-label="Copiar CV">
-          <mat-icon>content_copy</mat-icon>
-        </button>
-      </div>
-      <textarea class="text" [formControl]="cvControl" rows="16"></textarea>
-    </mat-card>
+        <textarea
+          class="text"
+          aria-label="Correo generado"
+          [formControl]="correoControl"
+          rows="10"
+        ></textarea>
+      </mat-card>
 
-    <mat-card class="panel actions">
-      <button mat-flat-button color="primary" (click)="openApplicationPortal()">
-        <mat-icon>open_in_new</mat-icon>
-        Abrir portal y completar envío
-      </button>
-      <button mat-flat-button color="primary" (click)="markApplied()">
-        <mat-icon>check_circle</mat-icon>
-        Ya envié la postulación
-      </button>
-      <div class="hint">
-        Revisa los textos, abre LinkedIn, Computrabajo u otro portal y confirma el envío. La app no
-        guarda tu contraseña ni intenta resolver CAPTCHA.
-      </div>
-    </mat-card>
-  </div>
-} @else {
-  <div class="loading">
-    <mat-spinner diameter="44"></mat-spinner>
-    <div>Generando con IA...</div>
-  </div>
+      <mat-card class="panel">
+        <div class="panel__head">
+          <div class="panel__title">Mensaje LinkedIn</div>
+          <button
+            mat-icon-button
+            (click)="copyMensaje()"
+            [disabled]="!mensajeControl.value"
+            aria-label="Copiar mensaje"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </div>
+        <textarea
+          class="text"
+          aria-label="Mensaje de LinkedIn generado"
+          [formControl]="mensajeControl"
+          rows="10"
+        ></textarea>
+      </mat-card>
+
+      <mat-card class="panel panel--wide">
+        <div class="panel__head">
+          <div>
+            <div class="panel__title">CV adaptado</div>
+            <div class="hint">Versión enfocada en la oferta, basada en tu perfil y CV adjunto.</div>
+          </div>
+          <button
+            mat-icon-button
+            (click)="copyCv()"
+            [disabled]="!cvControl.value"
+            aria-label="Copiar CV"
+          >
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </div>
+        <textarea
+          class="text"
+          aria-label="CV adaptado generado"
+          [formControl]="cvControl"
+          rows="16"
+        ></textarea>
+      </mat-card>
+
+      <mat-card class="panel actions">
+        <button mat-flat-button color="primary" (click)="openApplicationPortal()">
+          <mat-icon>open_in_new</mat-icon>
+          Abrir portal y completar envío
+        </button>
+        <button
+          mat-flat-button
+          color="primary"
+          (click)="markApplied()"
+          [disabled]="markingApplied()"
+        >
+          @if (markingApplied()) {
+            <mat-spinner diameter="18" />
+          } @else {
+            <mat-icon>check_circle</mat-icon>
+          }
+          {{ markingApplied() ? 'Guardando…' : 'Ya envié la postulación' }}
+        </button>
+        <div class="hint">
+          Revisa los textos, abre LinkedIn, Computrabajo u otro portal y confirma el envío. La app
+          no guarda tu contraseña ni intenta resolver CAPTCHA.
+        </div>
+      </mat-card>
+    </div>
+  }
 }

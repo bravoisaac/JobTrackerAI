@@ -39,6 +39,36 @@ function isRateLimited(err) {
   return status === 429 || code === 'rate_limit_exceeded' || code === 'too_many_requests';
 }
 
+function isInvalidApiKey(err) {
+  const code = err?.code ?? err?.error?.code;
+  const status = Number(err?.status ?? err?.response?.status);
+  return status === 401 || code === 'invalid_api_key';
+}
+
+function respondWithKnownAiError(res, err) {
+  if (isMissingApiKey(err) || isInvalidApiKey(err)) {
+    res.status(503).json({
+      detail:
+        'La clave de OpenAI falta o no es válida. Configura OPENAI_API_KEY en el backend o activa MOCK_ON_QUOTA=1 para usar el modo de demostración.'
+    });
+    return true;
+  }
+  if (isInsufficientQuota(err)) {
+    res.status(503).json({
+      detail:
+        'La cuenta de OpenAI no tiene cuota disponible. Revisa el billing o activa MOCK_ON_QUOTA=1 para usar la demostración.'
+    });
+    return true;
+  }
+  if (isRateLimited(err)) {
+    res.status(429).json({
+      detail: 'OpenAI está limitando temporalmente las solicitudes. Espera un momento e inténtalo nuevamente.'
+    });
+    return true;
+  }
+  return false;
+}
+
 function cleanText(value, maxLength = 4000) {
   return String(value ?? '').trim().slice(0, maxLength);
 }
@@ -54,6 +84,11 @@ function isHttpUrl(value) {
   } catch {
     return false;
   }
+}
+
+function isValidEmail(value) {
+  const email = cleanText(value, 320);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function formatCandidateProfile(profile) {
@@ -299,6 +334,9 @@ app.post('/browser-agent/start', (req, res) => {
       detail: 'Completa nombre y email en tu perfil antes de iniciar Yo aplico.'
     });
   }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ detail: 'Escribe un email válido en tu perfil.' });
+  }
   if (!searchProfile && !cleanText(payload.preferredTechnology, 120)) {
     return res.status(400).json({
       detail: 'Agrega cargos objetivo o habilidades en tu perfil para buscar trabajos.'
@@ -423,6 +461,9 @@ app.post(
       return res.status(400).json({
         detail: 'Completa nombre y email en tu perfil antes de postular.'
       });
+    }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ detail: 'Escribe un email válido en tu perfil.' });
     }
 
     const jobs = await loadJobs();
@@ -611,6 +652,9 @@ app.post(
       detail: 'Completa nombre y email en tu perfil antes de preparar postulaciones.'
     });
   }
+  if (!isValidEmail(email)) {
+    return res.status(400).json({ detail: 'Escribe un email válido en tu perfil.' });
+  }
 
   const allowedPlatforms = new Set(APPLICATION_PLATFORMS.map((platform) => platform.id));
   const requestedPlatforms = Array.isArray(payload.platforms)
@@ -699,7 +743,10 @@ app.post(
   } catch (err) {
     if (
       process.env.MOCK_ON_QUOTA === '1' &&
-      (isInsufficientQuota(err) || isMissingApiKey(err) || isRateLimited(err))
+      (isInsufficientQuota(err) ||
+        isMissingApiKey(err) ||
+        isInvalidApiKey(err) ||
+        isRateLimited(err))
     ) {
       const candidateName = cleanText(profile?.fullName) || 'Tu Nombre';
       const candidateEmail = cleanText(profile?.email);
@@ -743,6 +790,7 @@ app.post(
 
       return res.json({ correo, mensaje_linkedin, cv, mock: true });
     }
+    if (respondWithKnownAiError(res, err)) return;
     throw err;
   }
   })
@@ -823,7 +871,10 @@ app.post(
   } catch (err) {
     if (
       process.env.MOCK_ON_QUOTA === '1' &&
-      (isInsufficientQuota(err) || isMissingApiKey(err) || isRateLimited(err))
+      (isInsufficientQuota(err) ||
+        isMissingApiKey(err) ||
+        isInvalidApiKey(err) ||
+        isRateLimited(err))
     ) {
       const mock = mockDiscoveredJobs({
         query: q,
@@ -845,6 +896,7 @@ app.post(
         mock: true
       });
     }
+    if (respondWithKnownAiError(res, err)) return;
     throw err;
   }
   })
